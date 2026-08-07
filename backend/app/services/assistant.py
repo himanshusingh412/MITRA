@@ -10,11 +10,59 @@ citizen making a decision about money they need.
 
 from __future__ import annotations
 
+import json
 import re
+import urllib.error
+import urllib.request
 from typing import Any
 
+from app.core.config import settings
 from app.services.catalogue import all_schemes, get_scheme, sector_labels
 from app.services.eligibility import evaluate_scheme, recommend_schemes
+
+
+def call_gemini_ai(prompt: str, context: str = "", locale: str = "en") -> str | None:
+    """Calls Gemini API using settings.AI_API_KEY and settings.AI_MODEL."""
+    if not settings.AI_API_KEY:
+        return None
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.AI_MODEL}:generateContent?key={settings.AI_API_KEY}"
+
+    system_instruction = (
+        f"You are MITRA, an empathetic, highly accurate AI assistant for Indian government schemes and citizen services.\n"
+        f"Target language/locale: {locale}.\n"
+        f"Context on user's profile and matching schemes:\n{context}\n"
+        f"Respond concisely, clearly, and directly in the user's language without hallucinating unverified government rules."
+    )
+
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": f"{system_instruction}\n\nUser Question: {prompt}"}],
+            }
+        ],
+        "generationConfig": {
+            "temperature": settings.AI_TEMPERATURE,
+            "maxOutputTokens": settings.AI_MAX_OUTPUT_TOKENS,
+        },
+    }
+
+    headers = {"Content-Type": "application/json"}
+    data = json.dumps(payload).encode("utf-8")
+
+    try:
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            res_json = json.loads(resp.read().decode("utf-8"))
+            candidates = res_json.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts:
+                    return parts[0].get("text", "").strip()
+    except Exception as e:
+        print(f"Gemini API call warning: {e}")
+        return None
+    return None
 
 # Prefixes are deliberately open-ended (`pregnan` not `\bpregnan\b`) so inflected forms
 # match without enumerating every ending. Hinglish and transliterated terms are included
@@ -311,6 +359,13 @@ def ask(message: str, profile: dict[str, Any], locale: str = "en") -> dict[str, 
         rows = recommend_schemes(enriched, limit=4)
         return _reply(_t(locale, "topMatches"), [r["scheme"]["id"] for r in rows],
                       [("See all schemes", "/schemes")], detected)
+
+    if settings.AI_API_KEY:
+        refs = top(3)
+        context_info = f"Recommended matching scheme IDs: {refs}. Citizen profile: {enriched}"
+        ai_reply = call_gemini_ai(message, context=context_info, locale=locale)
+        if ai_reply:
+            return _reply(ai_reply, refs, [("Browse all schemes", "/schemes")], detected)
 
     return _reply(_t(locale, "noMatch"), top(3),
                   [("Browse all schemes", "/schemes")], detected)
