@@ -27,7 +27,7 @@ function AssistantView() {
   // Real speech recognition and synthesis, in-browser. No key, no audio leaves the device.
   const voice = useVoice(locale);
 
-  function send(text: string) {
+  async function send(text: string) {
     const q = text.trim();
     if (!q || thinking) return;
 
@@ -36,13 +36,40 @@ function AssistantView() {
     voice.reset();
     setThinking(true);
 
-    // A short delay makes the reply feel considered rather than instant, and gives the
-    // typing indicator time to register. The reasoning itself is synchronous and local.
+    try {
+      const res = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: q, profile: user, locale }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text) {
+          const localReply = ask(q, user, locale);
+          if (localReply.detectedEvents.length) {
+            const merged = Array.from(new Set([...user.lifeEvents, ...localReply.detectedEvents]));
+            if (merged.length !== user.lifeEvents.length) updateProfile({ lifeEvents: merged });
+          }
+
+          addMessages([
+            newMessage('assistant', data.text, {
+              schemeRefs: localReply.schemeRefs,
+              actions: localReply.actions,
+            }),
+          ]);
+          setThinking(false);
+          if (speakReplies) voice.speak(data.text);
+          return;
+        }
+      }
+    } catch {
+      // Fallback silently to offline reasoning engine
+    }
+
     window.setTimeout(() => {
       const reply = ask(q, user, locale);
 
-      // Life events mentioned in conversation update the profile, so every later
-      // recommendation reflects what the citizen just told us.
       if (reply.detectedEvents.length) {
         const merged = Array.from(new Set([...user.lifeEvents, ...reply.detectedEvents]));
         if (merged.length !== user.lifeEvents.length) updateProfile({ lifeEvents: merged });
@@ -56,10 +83,8 @@ function AssistantView() {
       ]);
       setThinking(false);
 
-      // Read the answer aloud when the citizen arrived by voice — someone who cannot
-      // read the screen comfortably should not have to.
       if (speakReplies) voice.speak(reply.text);
-    }, 550);
+    }, 450);
   }
   sendRef.current = send;
 
