@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari',
+      'Noto Sans Tamil', 'Noto Sans Bengali', sans-serif;
+    --surface: #ffffff;
+    --canvas: #f7f9fe;
+    --border: #e6ebf5;
+    --text: #0f172a;
+    --text-muted: #55617a;
+  }
+
+  .dark {
+    --surface: #131a2b;
+    --canvas: #0b101c;
+    --border: #253148;
+    --text: #eef2f9;
+    --text-muted: #9aa8c2;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A visible focus ring is non-negotiable: many citizens navigate entirely by keyboard,
+     and CSC operators work at speed without a mouse. */
+  :focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  ::selection {
+    background: #c7d2fe;
+    color: #1e1b4b;
+  }
+}
+
+@layer components {
+  .surface {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .muted {
+    color: var(--text-muted);
+  }
+
+  .card {
+    @apply surface rounded-2xl shadow-card;
+  }
+
+  /* Frosted panel used for the hero and overlays. Kept subtle so text contrast
+     stays above WCAG AA even on the gradient background. */
+  .glass {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.45));
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+
+  .dark .glass {
+    background: linear-gradient(135deg, rgba(30, 41, 66, 0.8), rgba(19, 26, 43, 0.55));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-lg;
+  }
+
+  .link-arrow {
+    @apply inline-flex items-center gap-1 text-sm font-semibold text-brand-500 transition-colors hover:text-brand-600;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+  }
+}
+
+/* Every animation in the product is decorative. Users who ask the OS to reduce motion
+   get the full interface with none of it. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

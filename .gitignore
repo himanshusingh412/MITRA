@@ -1,0 +1,62 @@
+# ─── Secrets — never commit ──────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*-service-account.json
+credentials.json
+
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+*.egg-info/
+
+# ─── Build output ────────────────────────────────────────────────────────────
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# ─── Testing & coverage ──────────────────────────────────────────────────────
+coverage/
+.coverage
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+playwright-report/
+test-results/
+
+# ─── Databases & vector stores (local) ───────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+chroma_data/
+faiss_index/
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Editor & OS ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ─── Misc ────────────────────────────────────────────────────────────────────
+.vercel
+.turbo
+tmp/

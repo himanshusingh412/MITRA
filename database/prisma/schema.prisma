@@ -1,0 +1,503 @@
+// MITRA — Prisma schema (Phase 4)
+//
+// Target production data model. The prototype runs in-memory; this schema is the
+// migration target and is kept consistent with the TypeScript types in
+// frontend/types/index.ts.
+//
+// Two principles drive the design:
+//  1. Eligibility criteria are stored as JSON, not columns — scheme rules vary in shape
+//     and change without notice. Adding a scheme must never require a migration.
+//  2. Citizen and administrative identities are separate tables with no shared session,
+//     so an administrative account can never be authenticated as a citizen.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum Area {
+  rural
+  urban
+}
+
+enum Category {
+  general
+  sc
+  st
+  obc
+  ews
+  minority
+}
+
+enum Occupation {
+  farmer
+  student
+  salaried
+  self_employed
+  daily_wage
+  homemaker
+  unemployed
+  retired
+  artisan
+}
+
+enum SchemeLevel {
+  central
+  state
+}
+
+enum ApplicationStatus {
+  draft
+  submitted
+  under_review
+  info_needed
+  approved
+  rejected
+  disbursed
+}
+
+enum DocumentSource {
+  upload
+  digilocker
+  csc
+}
+
+enum NotificationKind {
+  deadline
+  status
+  renewal
+  recommendation
+}
+
+enum ComplaintStatus {
+  open
+  in_progress
+  resolved
+}
+
+enum AdminRole {
+  block_officer
+  district_officer
+  state_admin
+  super_admin
+}
+
+enum IssueSeverity {
+  blocker
+  warning
+  info
+}
+
+// ─── Citizen identity ────────────────────────────────────────────────────────
+
+model Citizen {
+  id            String     @id @default(cuid())
+  // Google OAuth subject. Unique so an account cannot be duplicated.
+  googleSub     String     @unique
+  email         String     @unique
+  // PII columns are encrypted at rest by the application layer before write.
+  name          String
+  phone         String?
+  age           Int
+  gender        Gender
+  state         String
+  district      String
+  area          Area
+  occupation    Occupation
+  annualIncome  Int
+  category      Category
+  familySize    Int         @default(1)
+  hasDisability Boolean     @default(false)
+  disabilityPct Int?
+  landHectares  Decimal?    @db.Decimal(8, 2)
+  locale        String      @default("hi")
+
+  // Denormalised for fast filtering; authoritative history lives in LifeEvent.
+  existingBenefits String[] @default([])
+
+  familyMembers FamilyMember[] @relation("PrimaryCitizen")
+  memberOf      FamilyMember[] @relation("LinkedCitizen")
+  applications  Application[]
+  documents     Document[]
+  notifications Notification[]
+  conversations Conversation[]
+  lifeEvents    LifeEvent[]
+  complaints    Complaint[]
+  verifications VerificationReport[]
+
+  consentGivenAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  // Recommendation queries filter on these together.
+  @@index([state, district])
+  @@index([occupation, category])
+  @@index([deletedAt])
+  @@map("citizens")
+}
+
+model FamilyMember {
+  id         String  @id @default(cuid())
+  primaryId  String
+  primary    Citizen @relation("PrimaryCitizen", fields: [primaryId], references: [id], onDelete: Cascade)
+
+  // Set once the dependent has their own account; null while managed on their behalf.
+  linkedId   String?
+  linked     Citizen? @relation("LinkedCitizen", fields: [linkedId], references: [id])
+
+  relation   String
+  name       String
+  age        Int
+  gender     Gender
+  occupation Occupation
+  category   Category
+  hasDisability Boolean @default(false)
+  disabilityPct Int?
+
+  // Explicit delegation. Acting for an adult dependent requires recorded consent.
+  canActOnBehalf Boolean  @default(false)
+  consentAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([primaryId])
+  @@map("family_members")
+}
+
+model LifeEvent {
+  id        String   @id @default(cuid())
+  citizenId String
+  citizen   Citizen  @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+
+  event      String
+  // How we learned: 'declared' | 'inferred' | 'derived'. Inferred events are lower trust.
+  source     String   @default("declared")
+  confidence Float    @default(1.0)
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([citizenId, event])
+  @@map("life_events")
+}
+
+// ─── Scheme catalogue ────────────────────────────────────────────────────────
+
+model Scheme {
+  id              String      @id
+  name            String
+  shortName       String
+  ministry        String
+  sector          String
+  level           SchemeLevel
+
+  // Null for central schemes; set for state variants of the same benefit.
+  stateCode       String?
+  parentSchemeId  String?
+  parentScheme    Scheme?     @relation("SchemeVariant", fields: [parentSchemeId], references: [id])
+  variants        Scheme[]    @relation("SchemeVariant")
+
+  tagline         String
+  summary         String      @db.Text
+  benefitHeadline String
+  benefitDetail   String      @db.Text
+
+  // Rule[] and DocumentRequirement[]. JSON because shape varies per scheme —
+  // this is what lets a new scheme ship without a migration.
+  rules           Json
+  documents       Json
+
+  applyMode       String[]
+  processingDays  Int
+  officialUrl     String
+  relatedEvents   String[]
+  icon            String
+  accent          String
+
+  // Incremented on any rule change; cached eligibility results key on it.
+  version         Int         @default(1)
+  active          Boolean     @default(true)
+  applyWindowFrom DateTime?
+  applyWindowTo   DateTime?
+
+  applications    Application[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([sector, active])
+  @@index([stateCode])
+  @@map("schemes")
+}
+
+// ─── Applications ────────────────────────────────────────────────────────────
+
+model Application {
+  id            String            @id @default(cuid())
+  referenceNo   String            @unique
+  citizenId     String
+  citizen       Citizen           @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  schemeId      String
+  scheme        Scheme            @relation(fields: [schemeId], references: [id])
+
+  // The family member this is for; null when the citizen applies for themselves.
+  familyMemberId String?
+
+  status        ApplicationStatus @default(draft)
+  progressStep  Int               @default(1)
+  totalSteps    Int               @default(5)
+  district      String
+
+  // Snapshot of the eligibility result at submission. Kept because the citizen has a
+  // right to know why they were told they qualified, even after the rules change.
+  eligibilitySnapshot Json?
+  schemeVersion       Int?
+  formData            Json?
+
+  events        ApplicationEvent[]
+
+  submittedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([citizenId, status])
+  @@index([status, district])
+  @@index([schemeId])
+  @@map("applications")
+}
+
+model ApplicationEvent {
+  id            String            @id @default(cuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  status        ApplicationStatus
+  note          String            @db.Text
+  // Null when the transition was automatic rather than an officer decision.
+  actorAdminId  String?
+  createdAt     DateTime          @default(now())
+
+  @@index([applicationId, createdAt])
+  @@map("application_events")
+}
+
+// ─── Documents & verification ────────────────────────────────────────────────
+
+model Document {
+  id         String         @id @default(cuid())
+  citizenId  String
+  citizen    Citizen        @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+
+  name       String
+  type       String
+  source     DocumentSource @default(upload)
+
+  // Object-storage key. File bytes never sit in the database.
+  storageKey String?
+  mimeType   String?
+  sizeBytes  Int?
+
+  // OCR output: name, dob, address, gender, idNumber, fatherName.
+  // Encrypted at rest — this is the most sensitive column in the schema.
+  extracted  Json?
+  ocrConfidence Float?
+
+  verified   Boolean        @default(false)
+  issuedAt   DateTime?
+  expiresAt  DateTime?
+
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  deletedAt  DateTime?
+
+  @@index([citizenId, type])
+  // Drives the renewal reminder job.
+  @@index([expiresAt])
+  @@map("documents")
+}
+
+model VerificationReport {
+  id             String   @id @default(cuid())
+  citizenId      String
+  citizen        Citizen  @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+
+  documentsChecked  Int
+  fieldsCompared    Int
+  consistencyScore  Int
+  readyToSubmit     Boolean
+
+  // Resolved per-field values used for form auto-fill.
+  canonicalValues   Json
+  issues            VerificationIssue[]
+
+  createdAt      DateTime @default(now())
+
+  @@index([citizenId, createdAt])
+  @@map("verification_reports")
+}
+
+model VerificationIssue {
+  id         String             @id @default(cuid())
+  reportId   String
+  report     VerificationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  severity   IssueSeverity
+  field      String
+  documentIds String[]
+  title      String
+  detail     String             @db.Text
+  suggestion String             @db.Text
+  recommendedValue String?
+  confidence Int
+
+  resolvedAt DateTime?
+
+  @@index([reportId, severity])
+  @@map("verification_issues")
+}
+
+// ─── Engagement ──────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  citizenId String
+  citizen   Citizen          @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+
+  kind      NotificationKind
+  title     String
+  body      String           @db.Text
+  href      String?
+  read      Boolean          @default(false)
+
+  // Set for scheduled reminders; null for immediate notifications.
+  scheduledFor DateTime?
+  sentAt       DateTime?
+
+  createdAt DateTime         @default(now())
+
+  @@index([citizenId, read])
+  @@index([scheduledFor])
+  @@map("notifications")
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  citizenId String
+  citizen   Citizen   @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+
+  locale    String    @default("hi")
+  messages  Message[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([citizenId, updatedAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role           String
+  text           String       @db.Text
+  schemeRefs     String[]     @default([])
+  detectedEvents String[]     @default([])
+
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+model Complaint {
+  id        String          @id @default(cuid())
+  citizenId String
+  citizen   Citizen         @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+
+  subject   String
+  body      String          @db.Text
+  category  String
+  district  String
+  status    ComplaintStatus @default(open)
+
+  assignedAdminId String?
+  resolvedAt      DateTime?
+  resolutionNote  String?   @db.Text
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([status, district])
+  @@map("complaints")
+}
+
+// ─── Administration ──────────────────────────────────────────────────────────
+
+model Admin {
+  id           String    @id @default(cuid())
+  officerId    String    @unique
+  email        String    @unique
+  // Argon2id. Never bcrypt, never a bare hash.
+  passwordHash String
+  name         String
+  role         AdminRole
+  department   String
+  state        String
+  district     String?
+
+  mfaEnabled   Boolean   @default(false)
+  mfaSecret    String?
+
+  // Supports lockout after repeated failures.
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  lastLoginAt  DateTime?
+
+  auditLogs    AuditLog[]
+
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([state, district])
+  @@map("admins")
+}
+
+/// Append-only. Every administrative action and every access to citizen data is
+/// recorded here; rows are never updated or deleted.
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String?
+  admin      Admin?   @relation(fields: [adminId], references: [id])
+
+  action     String
+  entityType String
+  entityId   String
+  // Before/after values, with PII redacted before write.
+  changes    Json?
+
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt  DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
