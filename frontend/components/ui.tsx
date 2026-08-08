@@ -76,9 +76,15 @@ export function Button({
   ariaLabel?: string;
 }) {
   const variants = {
-    primary: 'bg-brand-500 text-white hover:bg-brand-600 shadow-sm',
-    secondary: 'surface hover:bg-brand-50 dark:hover:bg-brand-500/10',
-    ghost: 'hover:bg-brand-50 dark:hover:bg-brand-500/10',
+    // Navy fill with an amber hover, per the brand. Dark mode lifts the fill to brand-400:
+    // navy on a near-black canvas is legible as *text* but stops reading as a *button*,
+    // because the surface itself no longer separates from the page behind it.
+    // Amber hover keeps navy text rather than white — white on #E0A63C is only 2.1:1.
+    primary:
+      'bg-brand-500 text-white shadow-sm hover:bg-gold-500 hover:text-brand-900 ' +
+      'dark:bg-brand-400 dark:hover:bg-gold-500 dark:hover:text-brand-900',
+    secondary: 'surface hover:bg-brand-50 hover:border-brand-200 dark:hover:bg-brand-500/20',
+    ghost: 'hover:bg-brand-50 dark:hover:bg-brand-500/20',
     danger: 'bg-rose-600 text-white hover:bg-rose-700',
   };
   // Minimum 44px height on md/lg: this product is used by elderly citizens on small phones.

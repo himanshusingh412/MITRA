@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Button, Icon } from '@/components/ui';
+import { MitraMark } from '@/components/Brand';
 
 /**
  * 404.
@@ -25,12 +26,7 @@ export default function NotFound() {
       className="mx-auto flex min-h-dvh max-w-[680px] flex-col items-center justify-center px-5 py-16 text-center"
     >
       <div className="route-enter">
-        <span
-          aria-hidden="true"
-          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-brand-50 text-brand-500 dark:bg-brand-500/15"
-        >
-          <Icon name="Compass" className="h-8 w-8" />
-        </span>
+        <MitraMark className="mx-auto mb-6 h-16 w-16" title="" />
 
         <p className="muted text-sm font-semibold uppercase tracking-wide">Page not found</p>
         <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">

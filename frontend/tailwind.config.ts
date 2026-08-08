@@ -12,17 +12,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Deep navy, taken from the logo's figure. Ramped rather than tinted so that
+        // 500 (the interactive default) clears 4.5:1 on white and 300 clears it on navy —
+        // the two pairings the interface actually uses.
         brand: {
-          50: '#EEF2FF',
-          100: '#E0E7FF',
-          200: '#C7D2FE',
-          300: '#A5B4FC',
-          400: '#818CF8',
-          500: '#4F46E5',
-          600: '#4338CA',
-          700: '#3730A3',
-          800: '#312E81',
-          900: '#1E1B4B',
+          50: '#EEF0F8',
+          100: '#DDE1F0',
+          200: '#B9C0DE',
+          300: '#8B95C4',
+          400: '#5A64A0',
+          500: '#252A5E',
+          600: '#1D2250',
+          700: '#171B41',
+          800: '#121533',
+          900: '#0C0E24',
+        },
+        // Golden amber, the logo's second figure. Reserved for accent, hover and highlight —
+        // never for body text, where it fails contrast on both themes.
+        gold: {
+          50: '#FDF7EC',
+          100: '#FAEDD3',
+          200: '#F4D9A5',
+          300: '#EDC377',
+          400: '#E6B455',
+          500: '#E0A63C',
+          600: '#C08A2A',
+          700: '#96691F',
+          800: '#6B4A16',
+          900: '#432E0D',
         },
         ink: {
           DEFAULT: '#0F172A',
@@ -55,7 +72,7 @@ const config: Config = {
       },
       boxShadow: {
         card: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.12)',
-        lift: '0 2px 4px rgba(15,23,42,0.05), 0 18px 40px -18px rgba(79,70,229,0.35)',
+        lift: '0 2px 4px rgba(15,23,42,0.05), 0 18px 40px -18px rgba(37,42,94,0.32)',
         glass: 'inset 0 1px 0 rgba(255,255,255,0.6), 0 12px 32px -16px rgba(15,23,42,0.25)',
       },
       keyframes: {
@@ -67,6 +84,10 @@ const config: Config = {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        breathe: {
+          '0%, 100%': { opacity: '0.55', transform: 'scale(0.97)' },
+          '50%': { opacity: '1', transform: 'scale(1)' },
+        },
         pulseRing: {
           '0%': { transform: 'scale(0.9)', opacity: '0.7' },
           '70%': { transform: 'scale(1.6)', opacity: '0' },
@@ -77,6 +98,7 @@ const config: Config = {
         'fade-up': 'fade-up 0.35s ease-out both',
         shimmer: 'shimmer 1.6s linear infinite',
         'pulse-ring': 'pulseRing 1.8s cubic-bezier(0.4,0,0.6,1) infinite',
+        breathe: 'breathe 2.2s cubic-bezier(0.4,0,0.6,1) infinite',
       },
     },
   },

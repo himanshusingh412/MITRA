@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useStore } from '@/lib/store';
 import { LOCALES } from '@/lib/i18n';
 import { Badge, Icon, cx } from './ui';
+import { MitraMark } from './Brand';
 import type { Locale } from '@/types';
 
 const NAV = [
@@ -21,17 +22,9 @@ const NAV = [
 ];
 
 export function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
-  const dim = size === 'sm' ? 'h-9 w-9' : 'h-11 w-11';
-  return (
-    <div
-      className={cx(
-        dim,
-        'flex shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-400 to-emerald-400 text-white shadow-lift',
-      )}
-    >
-      <Icon name="Bot" className={size === 'sm' ? 'h-5 w-5' : 'h-6 w-6'} strokeWidth={2.2} />
-    </div>
-  );
+  // The mark carries its own disc, so no coloured chip is drawn behind it — stacking one
+  // on the other is what makes a logo look pasted in rather than designed in.
+  return <MitraMark className={size === 'sm' ? 'h-9 w-9' : 'h-11 w-11'} title="" />;
 }
 
 function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
@@ -113,7 +106,9 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       >
         <Logo />
         <div className="leading-tight">
-          <p className="text-lg font-extrabold tracking-tight text-brand-600 dark:text-brand-300">MITRA</p>
+          <p className="text-lg font-extrabold tracking-tight text-brand-500 dark:text-white">
+            MI<span className="text-gold-500">TRA</span>
+          </p>
           <p className="muted text-[10px] font-medium">Digital Citizen Assistant</p>
         </div>
       </Link>
@@ -130,7 +125,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 className={cx(
                   'flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors',
                   active
-                    ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300'
+                    ? 'bg-brand-50 text-brand-600 dark:bg-brand-400/25 dark:text-white'
                     : 'muted hover:bg-brand-50/70 dark:hover:bg-brand-500/10',
                 )}
               >
@@ -151,7 +146,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           href="/assistant"
           onClick={onNavigate}
-          className="flex h-11 w-full items-center gap-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-400 px-3 text-sm font-semibold text-white transition-opacity hover:opacity-95"
+          className="flex h-11 w-full items-center gap-3 rounded-xl bg-gradient-to-r from-brand-500 to-brand-400 px-3 text-sm font-semibold text-white dark:from-brand-400 dark:to-brand-300 dark:text-brand-900 transition-opacity hover:opacity-95"
         >
           <Icon name="Mic" className="h-[18px] w-[18px]" />
           Voice Assistant

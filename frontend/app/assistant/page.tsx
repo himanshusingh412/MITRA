@@ -11,6 +11,7 @@ import { evaluateScheme } from '@/lib/eligibility';
 import { getScheme } from '@/lib/schemes';
 import { useVoice } from '@/lib/useVoice';
 import Link from 'next/link';
+import { MitraMark } from '@/components/Brand';
 
 function AssistantView() {
   const { user, locale, messages, addMessages, clearMessages, updateProfile } = useStore();
@@ -127,9 +128,7 @@ function AssistantView() {
       <div id="main" className="mx-auto flex max-w-[900px] flex-col">
         <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-emerald-400 text-white">
-              <Icon name="Bot" className="h-6 w-6" />
-            </span>
+            <MitraMark className="h-11 w-11" title="" />
             <div>
               <h1 className="text-xl font-bold tracking-tight">MITRA Assistant</h1>
               {/*

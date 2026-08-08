@@ -1,5 +1,6 @@
 import type { CitizenProfile, Scheme, StoredDocument } from '@/types';
 import type { DocumentVerificationReport, VerificationIssue } from './documentVerification';
+import { BRAND, markSvgString } from '@/components/Brand';
 
 /**
  * Printable AI Verification Report.
@@ -172,7 +173,8 @@ export function buildReportHtml({ profile, documents, report, scheme }: ReportIn
     color: #0F172A; margin: 0; padding: 24px; line-height: 1.55; font-size: 13px;
     max-width: 820px; margin-inline: auto;
   }
-  header { border-bottom: 3px solid #4F46E5; padding-bottom: 16px; margin-bottom: 22px; }
+  header { border-bottom: 3px solid ${BRAND.navy}; padding-bottom: 16px; margin-bottom: 22px; }
+  .brandmark { display: flex; align-items: center; gap: 12px; }
   .brand { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
   h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: -0.02em; }
   .sub { color: #55617A; font-size: 12px; margin: 0; }
@@ -194,7 +196,7 @@ export function buildReportHtml({ profile, documents, report, scheme }: ReportIn
   .metric dd { margin: 0; font-size: 17px; font-weight: 700; }
 
   h2 { font-size: 14.5px; margin: 0 0 4px; letter-spacing: -0.01em; }
-  .count { background: #EEF2FF; color: #4F46E5; border-radius: 999px; padding: 1px 8px; font-size: 11px; margin-left: 5px; vertical-align: middle; }
+  .count { background: #EEF0F8; color: ${BRAND.navy}; border-radius: 999px; padding: 1px 8px; font-size: 11px; margin-left: 5px; vertical-align: middle; }
   .why { color: #55617A; font-size: 11.5px; margin: 0 0 12px; font-style: italic; }
   .block { margin-bottom: 24px; page-break-inside: auto; }
 
@@ -212,19 +214,19 @@ export function buildReportHtml({ profile, documents, report, scheme }: ReportIn
   .issue h3 { font-size: 13.5px; margin: 0 0 4px; }
   .detail, .fix, .rec, .docs { margin: 0 0 5px; font-size: 12px; }
   .detail { color: #334155; }
-  .fix { background: #F8FAFF; border-radius: 7px; padding: 8px 10px; }
+  .fix { background: #F7F8FC; border-radius: 7px; padding: 8px 10px; }
   .rec, .docs { color: #55617A; font-size: 11.5px; }
 
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
   th, td { text-align: left; padding: 8px 9px; border-bottom: 1px solid #E6EBF5; }
   th { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #55617A; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
-  .bar { display: inline-block; height: 6px; border-radius: 999px; background: #4F46E5; vertical-align: middle; margin-right: 6px; }
+  .bar { display: inline-block; height: 6px; border-radius: 999px; background: ${BRAND.navy}; vertical-align: middle; margin-right: 6px; }
 
   .clean { border: 1px dashed #A7F3D0; background: #ECFDF5; color: #047857; border-radius: 9px; padding: 12px 14px; font-size: 12.5px; }
   footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid #E6EBF5; color: #55617A; font-size: 10.5px; }
   .noprint { margin-bottom: 18px; }
-  button { font: inherit; font-weight: 700; background: #4F46E5; color: #fff; border: 0; border-radius: 9px; padding: 10px 18px; cursor: pointer; }
+  button { font: inherit; font-weight: 700; background: ${BRAND.navy}; color: #fff; border: 0; border-radius: 9px; padding: 10px 18px; cursor: pointer; }
   @media print { .noprint { display: none !important; } body { padding: 0; } }
 </style>
 </head>
@@ -235,9 +237,12 @@ export function buildReportHtml({ profile, documents, report, scheme }: ReportIn
 
   <header>
     <div class="brand">
-      <div>
-        <h1>AI Verification Report</h1>
-        <p class="sub">MITRA — Multilingual Intelligent Technology for Responsive Assistance</p>
+      <div class="brandmark">
+        ${markSvgString(42)}
+        <div>
+          <h1>AI Verification Report</h1>
+          <p class="sub">MITRA — Multilingual Intelligent Technology for Responsive Assistance</p>
+        </div>
       </div>
       <div class="ref">
         Reference<strong>${esc(ref)}</strong>

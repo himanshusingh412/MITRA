@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Icon, cx } from '@/components/ui';
 import { AuthPanel } from '@/components/AuthPanel';
+import { MitraLogo, MitraMark } from '@/components/Brand';
 
 /**
  * Public landing page — the application's front door.
@@ -47,15 +48,7 @@ function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () =>
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--canvas)]/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1180px] items-center gap-4 px-5 py-3.5">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 via-brand-400 to-emerald-400 text-white">
-            <Icon name="Bot" className="h-5 w-5" strokeWidth={2.2} />
-          </span>
-          <div className="leading-tight">
-            <p className="text-base font-extrabold tracking-tight">MITRA</p>
-            <p className="muted hidden text-[11px] sm:block">Digital Citizen Assistant</p>
-          </div>
-        </div>
+        <MitraLogo className="h-9 shrink-0" />
 
         <nav className="muted ml-auto hidden items-center gap-6 text-sm font-semibold md:flex">
           <a href="#features" className="transition-colors hover:text-brand-500">Features</a>
@@ -74,7 +67,7 @@ function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () =>
           {signedIn ? (
             <Link
               href="/dashboard"
-              className="press flex h-10 items-center gap-2 rounded-xl bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-600"
+              className="press flex h-10 items-center gap-2 rounded-xl bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-gold-500 hover:text-brand-900 dark:bg-brand-400 dark:hover:bg-gold-500"
             >
               Go to dashboard
               <Icon name="ArrowRight" className="h-4 w-4" />
@@ -82,7 +75,7 @@ function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () =>
           ) : (
             <button
               onClick={onSignIn}
-              className="press flex h-10 items-center gap-2 rounded-xl bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-600"
+              className="press flex h-10 items-center gap-2 rounded-xl bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-gold-500 hover:text-brand-900 dark:bg-brand-400 dark:hover:bg-gold-500"
             >
               Continue as Citizen
             </button>
@@ -101,11 +94,11 @@ function Hero({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void 
       {/* Soft gradient wash. Pointer-events-none so it can never eat a tap. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-50 via-transparent to-emerald-50/60 dark:from-brand-500/10 dark:to-emerald-500/5"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-50 via-transparent to-gold-50/70 dark:from-brand-400/12 dark:to-gold-500/5"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-brand-400/20 blur-3xl"
+        className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-gold-400/18 blur-3xl"
       />
 
       <div className="relative mx-auto grid max-w-[1180px] gap-12 px-5 py-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:py-24">
@@ -129,7 +122,7 @@ function Hero({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void 
             {signedIn ? (
               <Link
                 href="/dashboard"
-                className="press inline-flex h-12 items-center gap-2 rounded-xl bg-brand-500 px-6 text-base font-semibold text-white shadow-[var(--elev-2)] transition-colors hover:bg-brand-600"
+                className="press inline-flex h-12 items-center gap-2 rounded-xl bg-brand-500 px-6 text-base font-semibold text-white shadow-[var(--elev-2)] transition-colors hover:bg-gold-500 hover:text-brand-900 dark:bg-brand-400 dark:hover:bg-gold-500"
               >
                 <Icon name="LayoutDashboard" className="h-5 w-5" />
                 Go to your dashboard
@@ -137,7 +130,7 @@ function Hero({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void 
             ) : (
               <button
                 onClick={onSignIn}
-                className="press inline-flex h-12 items-center gap-2 rounded-xl bg-brand-500 px-6 text-base font-semibold text-white shadow-[var(--elev-2)] transition-colors hover:bg-brand-600"
+                className="press inline-flex h-12 items-center gap-2 rounded-xl bg-brand-500 px-6 text-base font-semibold text-white shadow-[var(--elev-2)] transition-colors hover:bg-gold-500 hover:text-brand-900 dark:bg-brand-400 dark:hover:bg-gold-500"
               >
                 <Icon name="UserRound" className="h-5 w-5" />
                 Continue as Citizen
@@ -181,9 +174,7 @@ function HeroIllustration() {
       {/* Assistant card */}
       <div className="glass absolute left-0 top-6 w-[300px] rounded-2xl p-4 shadow-[var(--elev-2)] float-slow">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-500 text-white">
-            <Icon name="Bot" className="h-4 w-4" />
-          </span>
+          <MitraMark className="h-8 w-8" title="" />
           <p className="text-sm font-bold">MITRA Assistant</p>
         </div>
         <p className="mt-3 text-[13px] leading-relaxed">
@@ -461,7 +452,7 @@ function VerificationPreview() {
 function ClosingCta({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void }) {
   return (
     <section className="mx-auto max-w-[1180px] px-5 pb-20">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-emerald-500 px-6 py-14 text-center text-white sm:px-12">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-gold-500 px-6 py-14 text-center text-white sm:px-12">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl"
@@ -510,11 +501,9 @@ function SiteFooter() {
     <footer className="border-t border-[var(--border)] bg-[var(--surface)]">
       <div className="mx-auto max-w-[1180px] px-5 py-8">
         <div className="flex flex-wrap items-center gap-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-emerald-400 text-white">
-            <Icon name="Bot" className="h-4 w-4" />
-          </span>
-          <p className="text-sm font-bold">
-            MITRA <span className="muted font-medium">— Multilingual Intelligent Technology for Responsive Assistance</span>
+          <MitraLogo className="h-9" showDescriptor={false} />
+          <p className="muted text-sm">
+            Multilingual Intelligent Technology for Responsive Assistance
           </p>
         </div>
         <p className="muted mt-4 max-w-[80ch] text-xs leading-relaxed">
@@ -583,9 +572,7 @@ function AuthDialog({ onClose }: { onClose: () => void }) {
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-emerald-400 text-white">
-              <Icon name="Bot" className="h-5 w-5" />
-            </span>
+            <MitraMark className="h-10 w-10" title="" />
             <div className="leading-tight">
               <p id="auth-dialog-title" className="text-base font-extrabold tracking-tight">
                 Citizen Portal

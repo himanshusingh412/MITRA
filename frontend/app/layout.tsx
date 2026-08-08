@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#4F46E5',
+  themeColor: '#252A5E',
   width: 'device-width',
   initialScale: 1,
   // Never lock zoom: citizens with low vision must be able to scale the interface.

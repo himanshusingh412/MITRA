@@ -1,24 +1,35 @@
+import { MitraMark } from '@/components/Brand';
+
 /**
- * Route-level loading skeleton.
+ * Route-level loading state.
  *
- * Shown by Next's Suspense boundary while a route's code and data resolve. The shape
- * mirrors the real page — header, stat row, content cards — so the transition to loaded
- * content is a fill rather than a re-layout. That is the whole point of a skeleton over a
- * spinner: a spinner says "wait", a skeleton says "here is what is arriving", and it holds
- * the space so nothing shifts underneath the citizen's thumb.
+ * The mark breathes while the route resolves — a single element scaling between 0.97 and
+ * 1.0 with a matching opacity shift. That restraint is deliberate: a particle assembly or
+ * a morphing logo would be a longer, more expensive animation that makes a fast load feel
+ * artificially slow, and on the low-end Android this product targets it would drop frames
+ * on the very devices that wait longest.
  *
- * Marked aria-busy and labelled, so a screen reader announces the wait instead of reading
- * an empty region.
+ * Below the mark, the skeleton mirrors the real page — header, stat row, content cards —
+ * so the transition to loaded content is a fill rather than a re-layout. A spinner says
+ * "wait"; a skeleton says "here is what is arriving", and it reserves the space so nothing
+ * shifts under the citizen's thumb.
  */
 export default function Loading() {
   return (
     <div
       role="status"
       aria-busy="true"
-      aria-label="Loading page"
+      aria-label="Loading"
       className="mx-auto max-w-[1100px] px-5 py-8"
     >
       <span className="sr-only">Loading…</span>
+
+      <div className="mb-9 flex flex-col items-center pt-6">
+        <MitraMark className="h-14 w-14 animate-breathe" title="" />
+        <p className="muted mt-3.5 text-xs font-semibold uppercase tracking-[0.16em]">
+          MITRA
+        </p>
+      </div>
 
       <div className="mb-7 space-y-3">
         <div className="skeleton h-7 w-56" />
