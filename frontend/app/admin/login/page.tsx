@@ -4,13 +4,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button, Card, Icon } from '@/components/ui';
-import { writeAdminSession } from '@/components/adminShell';
 
 /**
  * Admin sign-in — deliberately a separate route, layout and session from the citizen app.
  *
- * The error message is intentionally generic: revealing whether an account exists lets an
- * attacker enumerate valid government user IDs. Same message, same timing, every failure.
+ * This form does not decide anything. It posts to /api/admin/login, which compares the
+ * password against a scrypt hash server-side, counts the lockout server-side, and sets
+ * an httpOnly cookie the browser cannot read. The credential is never present in this
+ * bundle, and middleware.ts — not this component — is what actually guards /admin.
+ *
+ * The error message stays intentionally generic: revealing whether an account exists
+ * lets an attacker enumerate valid government user IDs.
  */
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -18,32 +22,37 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [attempts, setAttempts] = useState(0);
+  const [locked, setLocked] = useState(false);
 
-  const locked = attempts >= 5;
-
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (locked) return;
+    if (locked || busy) return;
     setBusy(true);
     setError('');
 
-    window.setTimeout(() => {
-      // Prototype credential check. Production replaces this with the departmental
-      // identity provider plus a second factor; the UI contract does not change.
-      if (officerId.trim().toLowerCase() === 'officer' && password === 'mitra2026') {
-        writeAdminSession({
-          name: 'Priya Sharma',
-          role: 'District Welfare Officer',
-          district: 'Muzaffarpur',
-        });
-        router.push('/admin');
-      } else {
-        setAttempts((a) => a + 1);
-        setError('Those sign-in details were not recognised.');
-        setBusy(false);
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ officerId, password }),
+      });
+      const body = await res.json().catch(() => null);
+
+      if (res.ok) {
+        setPassword('');
+        // Full navigation so middleware re-evaluates with the new cookie.
+        router.replace('/admin');
+        router.refresh();
+        return;
       }
-    }, 600);
+
+      if (res.status === 429) setLocked(true);
+      setError(body?.error?.message ?? 'Those sign-in details were not recognised.');
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.');
+    }
+    setBusy(false);
   }
 
   return (
@@ -70,7 +79,7 @@ export default function AdminLoginPage() {
                 autoComplete="username"
                 required
                 disabled={locked}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </div>
 
@@ -86,7 +95,7 @@ export default function AdminLoginPage() {
                 autoComplete="current-password"
                 required
                 disabled={locked}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </div>
 
@@ -106,8 +115,8 @@ export default function AdminLoginPage() {
                 className="flex items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-3 text-[13px] font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-300"
               >
                 <Icon name="Lock" className="mt-0.5 h-4 w-4 shrink-0" />
-                Too many attempts. This account is temporarily locked — contact your department
-                administrator.
+                Too many attempts. Sign-in from this address is locked for 15 minutes —
+                contact your department administrator.
               </p>
             )}
 
@@ -119,9 +128,12 @@ export default function AdminLoginPage() {
 
           <div className="mt-5 rounded-xl bg-[var(--canvas)] p-3.5">
             <p className="muted text-xs leading-relaxed">
-              <span className="font-bold">Demo credentials:</span> officer / mitra2026
+              <span className="font-bold">Demo account:</span> ask the team for the
+              evaluation credentials.
               <br />
-              Rate limiting, CAPTCHA and a second factor apply in a deployed system.
+              Verified server-side against a scrypt hash, locked out after 5 attempts per
+              address. A departmental identity provider and a second factor replace this
+              in a deployed system.
             </p>
           </div>
         </Card>

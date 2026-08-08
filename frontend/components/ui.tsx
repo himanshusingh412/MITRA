@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import * as Icons from 'lucide-react';
 import type { MatchLevel } from '@/types';
 
@@ -37,15 +37,18 @@ export function Card({
   className = '',
   as = 'div',
   id,
+  interactive = false,
 }: {
   children: ReactNode;
   className?: string;
   as?: 'div' | 'section' | 'article';
   id?: string;
+  /** Adds hover lift and press feedback. Only for cards that are themselves clickable. */
+  interactive?: boolean;
 }) {
   const Tag = as;
   return (
-    <Tag id={id} className={cx('card', className)}>
+    <Tag id={id} className={cx('card', interactive && 'card-interactive', className)}>
       {children}
     </Tag>
   );
@@ -79,13 +82,21 @@ export function Button({
     danger: 'bg-rose-600 text-white hover:bg-rose-700',
   };
   // Minimum 44px height on md/lg: this product is used by elderly citizens on small phones.
+  // `sm` is only for controls that sit inside an already-large tap target.
   const sizes = {
     sm: 'h-9 px-3 text-sm',
     md: 'h-11 px-4 text-sm',
     lg: 'h-12 px-6 text-base',
   };
   const cls = cx(
-    'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+    'inline-flex select-none items-center justify-center gap-2 rounded-xl font-semibold',
+    // Colour and transform are the only animated properties, so a press never triggers
+    // layout. `press` supplies the 0.97 scale and is neutralised under reduced-motion.
+    'press transition-colors',
+    // touch-action removes the 300ms tap delay that makes a button feel unresponsive on
+    // Android; cursor-pointer is explicit because <button> does not set it by default.
+    'cursor-pointer touch-manipulation',
+    'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
     variants[variant],
     sizes[size],
     className,
@@ -260,18 +271,71 @@ export function PageHeader({
   );
 }
 
+/**
+ * Counts a numeric value up on first paint.
+ *
+ * Only the digits animate — the surrounding text ("₹", "%", "lakh") is left alone, so a
+ * value like "₹5 lakh" still reads correctly the entire way up. The final value is written
+ * to the DOM immediately for assistive tech via aria-label, because a screen reader
+ * announcing a number mid-count would read a figure that was never true.
+ *
+ * Falls back to the plain string when the value is not numeric, when the user prefers
+ * reduced motion, or before hydration.
+ */
+function CountUp({ value }: { value: string }) {
+  const target = Number(value.replace(/[^0-9.-]/g, ''));
+  const animatable = value.length <= 12 && Number.isFinite(target) && Math.abs(target) >= 10;
+
+  const [display, setDisplay] = useState(value);
+
+  useEffect(() => {
+    if (!animatable) {
+      setDisplay(value);
+      return;
+    }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setDisplay(value);
+      return;
+    }
+
+    let frame = 0;
+    const DURATION = 700;
+    const start = performance.now();
+    // Same deceleration curve as --ease-out, so counters settle like everything else.
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / DURATION);
+      const current = Math.round(target * easeOut(t));
+      setDisplay(value.replace(/[\d,]+(\.\d+)?/, current.toLocaleString('en-IN')));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, target, animatable]);
+
+  return (
+    <span aria-label={value}>
+      <span aria-hidden="true">{display}</span>
+    </span>
+  );
+}
+
 export function Stat({
   label,
   value,
   delta,
   icon,
   accent = 'blue',
+  animate = true,
 }: {
   label: string;
   value: string;
   delta?: string;
   icon: string;
   accent?: keyof typeof ACCENTS;
+  animate?: boolean;
 }) {
   const a = ACCENTS[accent] ?? ACCENTS.blue;
   return (
@@ -279,7 +343,10 @@ export function Stat({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="muted text-xs font-semibold uppercase tracking-wide">{label}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight">{value}</p>
+          {/* Tabular figures stop the number jittering horizontally as digits change. */}
+          <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">
+            {animate ? <CountUp value={value} /> : value}
+          </p>
           {delta && <p className="muted mt-1 text-xs">{delta}</p>}
         </div>
         <div className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', a.bg, a.fg)}>

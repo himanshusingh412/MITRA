@@ -27,10 +27,41 @@ export type FieldKey = 'name' | 'dob' | 'address' | 'gender' | 'idNumber' | 'fat
 
 export type IssueSeverity = 'blocker' | 'warning' | 'info';
 
+/**
+ * What kind of problem this is, independent of which OCR field it touches.
+ *
+ * `field` answers "which value disagreed" and only means something for a comparison.
+ * Expiry and completeness problems have no disagreeing field, and previously borrowed
+ * `field: 'idNumber'` to satisfy the type — which is why an expired income certificate
+ * was labelled "ID number" in the UI. Kind carries the categorisation instead, and
+ * `field` is now optional and only set when a real field comparison produced the issue.
+ */
+export type IssueKind = 'cross-document' | 'profile' | 'expiry' | 'missing';
+
+/** Ordering weight. Cross-document reconciliation is the hardest inference MITRA makes
+ *  and the one a reviewer should see first; expiry is a lookup anyone can do. */
+const KIND_ORDER: Record<IssueKind, number> = {
+  'cross-document': 0,
+  profile: 1,
+  missing: 2,
+  expiry: 3,
+};
+
+export const KIND_LABEL: Record<IssueKind, string> = {
+  'cross-document': 'Cross-document',
+  profile: 'Profile mismatch',
+  expiry: 'Document expiry',
+  missing: 'Missing document',
+};
+
 export interface VerificationIssue {
   id: string;
   severity: IssueSeverity;
-  field: FieldKey;
+  kind: IssueKind;
+  /** Only set for issues produced by comparing a field across documents. */
+  field?: FieldKey;
+  /** Human-readable category shown as the badge in the UI. */
+  category: string;
   /** Documents involved in this specific disagreement. */
   documentIds: string[];
   title: string;
@@ -39,6 +70,14 @@ export interface VerificationIssue {
   suggestion: string;
   /** The value MITRA believes is correct, where it can tell. */
   recommendedValue?: string;
+  /**
+   * How certain MITRA is that this finding is a real problem, 0–100.
+   *
+   * NOT the similarity between the two values. A day-month transposition scores high
+   * similarity as a string yet is a near-certain data-entry error, so reporting
+   * `1 - similarity` displayed "28% confidence" on a finding the engine was actually
+   * sure about — a number that read backwards to anyone reviewing the report.
+   */
   confidence: number;
 }
 
@@ -171,6 +210,22 @@ function compareField(
     default:
       return { score: 0, verdict: 'mismatch', note: 'Field could not be compared.' };
   }
+}
+
+/**
+ * How certain MITRA is that a disagreement is a real problem.
+ *
+ * Three bands. A recognised structural pattern (day/month transposition, a
+ * transliteration variant) is a confident diagnosis. An outright mismatch is confident by
+ * definition. Everything else sits in the uncertain middle, where confidence does track
+ * how far apart the two values are.
+ */
+const STRUCTURAL_PATTERNS = [/swapped/i, /transpos/i, /only the year/i];
+
+function confidenceFor(d: Disagreement): number {
+  if (STRUCTURAL_PATTERNS.some((re) => re.test(d.note))) return 92;
+  if (d.verdict === 'mismatch') return Math.max(80, Math.round(80 + (1 - d.score) * 20));
+  return Math.max(45, Math.round((1 - d.score) * 100));
 }
 
 const FIELDS: FieldKey[] = ['name', 'dob', 'address', 'gender', 'idNumber', 'fatherName'];
@@ -347,13 +402,20 @@ export function verifyDocumentSet(
     issues.push({
       id: `${d.field}-${d.docA.id}-${d.docB.id}`,
       severity,
+      kind: 'cross-document',
       field: d.field,
+      category: FIELD_LABEL[d.field],
       documentIds: [d.docA.id, d.docB.id],
       title: `${FIELD_LABEL[d.field]} differs between ${labelOf(d.docA)} and ${labelOf(d.docB)}`,
       detail: `${labelOf(d.docA)} says "${d.valueA}", ${labelOf(d.docB)} says "${d.valueB}". ${d.note}`,
       suggestion: text,
       recommendedValue: recommended,
-      confidence: Math.round((1 - d.score) * 100),
+      // A structural finding — "day and month are swapped" — is a diagnosis, not a
+      // guess, even though the two strings are highly similar. Similarity-derived
+      // confidence would report it at 35%, which understates exactly the inference that
+      // makes this engine worth having. Named patterns are therefore scored on the
+      // strength of the pattern, not on string distance.
+      confidence: confidenceFor(d),
     });
   }
 
@@ -365,13 +427,15 @@ export function verifyDocumentSet(
       issues.push({
         id: 'profile-name-mismatch',
         severity: 'warning',
+        kind: 'profile',
         field: 'name',
+        category: KIND_LABEL.profile,
         documentIds: [profileName.sourceDocId],
         title: 'Your profile name does not match your documents',
         detail: `Your documents consistently show "${profileName.value}" but your MITRA profile says "${profile.name}".`,
         suggestion: `Update your MITRA profile to "${profileName.value}" so that auto-filled forms match your documents exactly.`,
         recommendedValue: profileName.value,
-        confidence: Math.round((1 - cmp.score) * 100),
+        confidence: Math.max(70, Math.round(70 + (1 - cmp.score) * 30)),
       });
     }
   }
@@ -385,7 +449,8 @@ export function verifyDocumentSet(
       issues.push({
         id: `expired-${doc.id}`,
         severity: 'blocker',
-        field: 'idNumber',
+        kind: 'expiry',
+        category: KIND_LABEL.expiry,
         documentIds: [doc.id],
         title: `${doc.name} has expired`,
         detail: `It lapsed ${Math.abs(daysLeft)} days ago, on ${formatDate(doc.expiresAt.slice(0, 10))}.`,
@@ -396,7 +461,8 @@ export function verifyDocumentSet(
       issues.push({
         id: `expiring-${doc.id}`,
         severity: 'warning',
-        field: 'idNumber',
+        kind: 'expiry',
+        category: KIND_LABEL.expiry,
         documentIds: [doc.id],
         title: `${doc.name} expires in ${daysLeft} days`,
         detail: `Valid until ${formatDate(doc.expiresAt.slice(0, 10))}. Processing this application takes time, and it may still be under review when the certificate lapses.`,
@@ -414,7 +480,8 @@ export function verifyDocumentSet(
         issues.push({
           id: `missing-${req.id}`,
           severity: 'blocker',
-          field: 'idNumber',
+          kind: 'missing',
+          category: KIND_LABEL.missing,
           documentIds: [],
           title: `${req.name} is missing`,
           detail: `${scheme.shortName} requires this document and it is not in your vault yet.`,
@@ -448,9 +515,23 @@ export function verifyDocumentSet(
             } worth correcting to be safe.`
           : `All ${docs.length} documents agree with each other. You are ready to submit.`;
 
-  // Sort so the most serious problems are read first.
+  // Sort so the most serious problems are read first, and within one severity band the
+  // hardest inference leads. A reviewer scanning the list should meet cross-document
+  // reconciliation before an expiry date, because the first is reasoning and the second
+  // is a lookup — and the ordering is what communicates that difference.
+  //
+  // Kind leads, severity orders within it. Sorting by severity first buried the
+  // cross-document findings underneath a lapsed date, which inverts what the engine is
+  // actually doing: an expiry check is a lookup, reconciling six documents against each
+  // other is the inference. Every card still carries its own severity badge, so nothing
+  // urgent is hidden — it is the reading order that changes, not the emphasis.
   const order: Record<IssueSeverity, number> = { blocker: 0, warning: 1, info: 2 };
-  issues.sort((a, b) => order[a.severity] - order[b.severity] || b.confidence - a.confidence);
+  issues.sort(
+    (a, b) =>
+      KIND_ORDER[a.kind] - KIND_ORDER[b.kind] ||
+      order[a.severity] - order[b.severity] ||
+      b.confidence - a.confidence,
+  );
 
   return {
     documentsChecked: docs.length,

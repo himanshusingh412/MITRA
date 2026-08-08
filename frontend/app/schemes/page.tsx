@@ -71,7 +71,7 @@ function SchemesView() {
                 id="person"
                 value={personId}
                 onChange={(e) => setPersonId(e.target.value)}
-                className="surface h-10 rounded-xl px-3 text-sm font-semibold outline-none"
+                className="input h-10 w-auto font-semibold"
               >
                 {allPeople.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -103,7 +103,7 @@ function SchemesView() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search schemes, ministries or benefits"
-                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
+                  className="input-bare"
                 />
                 {query && (
                   <button onClick={() => setQuery('')} aria-label="Clear search">
@@ -136,7 +136,7 @@ function SchemesView() {
             action={{ label: 'Ask MITRA instead', href: '/assistant' }}
           />
         ) : (
-          <div className="grid gap-3">
+          <div className="stagger grid gap-3">
             {rows.map(({ scheme, result }) => (
               <SchemeRow key={scheme.id} scheme={scheme} result={result} />
             ))}

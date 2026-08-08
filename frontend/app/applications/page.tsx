@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { AppShell } from '@/components/shell';
 import {
   ACCENTS,
-  Badge,
   Button,
   Card,
   EmptyState,
@@ -70,7 +69,7 @@ export default function ApplicationsPage() {
             action={{ label: 'Find schemes for you', href: '/schemes' }}
           />
         ) : (
-          <div className="space-y-3">
+          <div className="stagger space-y-3">
             {filtered.map((app) => {
               const scheme = getScheme(app.schemeId);
               if (!scheme) return null;

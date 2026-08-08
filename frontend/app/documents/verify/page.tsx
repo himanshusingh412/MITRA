@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { autofillValues, verifyDocumentSet } from '@/lib/documentVerification';
+import { downloadReport, openReport } from '@/lib/verificationReport';
 import type { IssueSeverity, VerificationIssue } from '@/lib/documentVerification';
 
 const SEVERITY_STYLE: Record<IssueSeverity, { tone: 'danger' | 'warning' | 'info'; icon: string; label: string; ring: string }> = {
@@ -60,7 +61,7 @@ export default function VerifyDocumentsPage() {
               setResolved(new Set());
             }}
             aria-label="Check documents for"
-            className="surface h-11 rounded-xl px-3 text-sm font-semibold outline-none"
+            className="input h-11 w-auto font-semibold"
           >
             {allPeople.map((p) => (
               <option key={p.id} value={p.id}>
@@ -72,6 +73,20 @@ export default function VerifyDocumentsPage() {
           <Button variant="secondary" onClick={rescan} disabled={scanning}>
             <Icon name={scanning ? 'Loader' : 'ScanSearch'} className={cx('h-4 w-4', scanning && 'animate-spin')} />
             {scanning ? 'Scanning' : 'Re-scan'}
+          </Button>
+          {/* The report is the artefact a citizen can carry to a CSC counter or attach to
+              a grievance — the on-screen view is for acting on, this is for proving. */}
+          <Button
+            onClick={() => {
+              const input = { profile: person, documents: personDocs, report };
+              // Popup blockers are common on mobile browsers; fall back to a download
+              // rather than letting the button appear to do nothing.
+              if (!openReport(input)) downloadReport(input);
+            }}
+            disabled={scanning || personDocs.length === 0}
+          >
+            <Icon name="FileDown" className="h-4 w-4" />
+            Download report
           </Button>
         </PageHeader>
 
@@ -299,7 +314,16 @@ function IssueCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={style.tone}>{style.label}</Badge>
-            <Badge tone="neutral">{FIELD_LABELS[issue.field] ?? issue.field}</Badge>
+            {/* The engine now categorises the issue itself. Reading the category off the
+                OCR field is what produced "ID number" on an expired certificate. */}
+            <Badge tone={issue.kind === 'cross-document' ? 'brand' : 'neutral'}>
+              {issue.category}
+            </Badge>
+            {issue.kind === 'cross-document' && (
+              <span className="muted text-xs font-semibold">
+                {issue.confidence}% confidence
+              </span>
+            )}
           </div>
 
           <h3 className="mt-2 text-[15px] font-bold leading-snug">{issue.title}</h3>

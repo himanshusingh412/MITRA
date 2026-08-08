@@ -6,17 +6,50 @@ MITRA handles some of the most sensitive data a citizen has: identity documents,
 
 ---
 
-## 1. Prototype security posture — stated honestly
+## 1. Control status — what is live today
 
-| Control | Prototype | Deployment target |
+Every row below reflects the deployed build. Sections 2 onward describe the design; where
+a control is not yet implemented it is marked **Designed** and must not be assumed active.
+
+| Control | Status | Detail |
 |---|---|---|
-| External data transmission | **None.** All reasoning is local; no API keys, no outbound calls | TLS 1.3 to GCP India region |
-| Data at rest | In browser memory only; cleared on refresh | Postgres, AES-256, PII columns application-encrypted |
-| Persisted client state | Language and theme only | Session token in httpOnly cookie |
-| Authentication | Demo credential check on the admin route | Google OAuth (citizen) + departmental IdP with MFA (admin) |
-| Audit logging | In-session, visible in the admin queue | Append-only `audit_logs`, immutable |
+| Citizen session | ✅ **Implemented** | Signed JWT in an httpOnly, `sameSite=strict` cookie; 12-hour expiry |
+| Per-visitor data isolation | ✅ **Implemented** | Each session gets a household cloned from the template; no record is shared between visitors |
+| API authorisation | ✅ **Implemented** | Every route requires a session; queries scoped to the caller's household; ownership asserted on `[id]` routes |
+| Admin authorisation | ✅ **Implemented** | `middleware.ts` verifies a signed admin JWT server-side before `/admin/*` renders |
+| Admin password storage | ✅ **Implemented** | scrypt (N=16384, r=8, p=1), constant-time compare, hash held in an env var |
+| Admin lockout | ✅ **Implemented** | 5 attempts per address per 15 minutes, counted server-side |
+| Generic auth errors | ✅ **Implemented** | Identical message and equalised timing for unknown id vs wrong password |
+| Input validation | ✅ **Implemented** | Type, range and enum checks on every writable field; JSON allow-list on OCR output |
+| Rate limiting | ⚠️ **Partial** | In-process fixed window per route. Throttles a single client; **not a distributed quota** — the budget is per warm serverless instance. Vercel KV upgrade documented in §7 |
+| CSRF defence | ✅ **Implemented** | `sameSite=strict` cookies plus an origin check on every mutating request |
+| Secure headers | ✅ **Implemented** | CSP, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`; `noindex` on `/admin` |
+| Transport | ✅ **Implemented** | TLS terminated at Vercel; HSTS supplied by the platform |
+| Error handling | ✅ **Implemented** | Single exit point; upstream and driver errors logged server-side, never returned |
+| Data at rest | ⚠️ **Partial** | Neon Postgres, encrypted at the storage layer. **Application-level PII column encryption is not yet implemented** |
+| Audit logging | ❌ **Designed** | `audit_logs` model specified; not implemented |
+| Citizen OAuth | ❌ **Designed** | Google OAuth with PKCE specified; sessions are currently anonymous sandboxes |
+| Admin MFA | ❌ **Designed** | Second factor specified; not implemented |
+| CAPTCHA | ❌ **Designed** | Not implemented |
 
-The prototype's strongest security property is that **it has no attack surface for data exfiltration** — there is no backend to breach and no key to steal. That property disappears the moment it is deployed, which is why the rest of this document exists.
+## 1a. Data that leaves the device
+
+Being precise about this matters more than being reassuring about it.
+
+**Stays local.** Eligibility evaluation, scheme recommendation, document cross-verification
+and the offline assistant all run in the browser against the bundled catalogue. No document
+image or OCR field is ever transmitted to a third party.
+
+**Sent to Google Gemini** (server-side, over TLS, only when the online assistant answers):
+the citizen's typed question, plus a deliberately minimised context — age *band*, state,
+rural/urban, occupation, household income *band*, family size, and disability flag.
+
+**Never sent:** name, exact income, caste category, district, document contents, any
+identity number, or any family member's details.
+
+If the Gemini call fails, times out, or the key is absent, the on-device engine answers
+instead and the citizen sees no error. The assistant screen states this in the interface,
+not only here.
 
 ## 2. Authentication
 

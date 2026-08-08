@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import { SchemeRow } from '@/components/SchemeCard';
-import { Badge, Button, Card, Icon, Skeleton, cx } from '@/components/ui';
+import { Button, Icon, Skeleton, cx } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { QUICK_PROMPTS, ask, newMessage } from '@/lib/assistant';
 import { evaluateScheme } from '@/lib/eligibility';
@@ -40,12 +40,16 @@ function AssistantView() {
       const res = await fetch('/api/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        // The route minimises this before anything leaves the server — no name, no
+        // exact income, no caste category reaches the model.
         body: JSON.stringify({ message: q, profile: user, locale }),
       });
 
       if (res.ok) {
-        const data = await res.json();
-        if (data.text) {
+        const body = await res.json();
+        const data = body?.data ?? body;
+        if (data?.text) {
           const localReply = ask(q, user, locale);
           if (localReply.detectedEvents.length) {
             const merged = Array.from(new Set([...user.lifeEvents, ...localReply.detectedEvents]));
@@ -128,8 +132,17 @@ function AssistantView() {
             </span>
             <div>
               <h1 className="text-xl font-bold tracking-tight">MITRA Assistant</h1>
+              {/*
+                This line is a promise to a citizen about their data, so it states
+                exactly what happens: a cloud model writes the wording, eligibility is
+                decided on this device, and the details sent are not identifying.
+              */}
               <p className="muted text-xs">
-                Runs entirely on your device — no data leaves MITRA to answer you.
+                Answers are written by a secure cloud AI. Your eligibility is calculated
+                on your device — your name, income and category are never sent.{' '}
+                <Link href="/about#privacy" className="underline underline-offset-2">
+                  What is shared
+                </Link>
               </p>
             </div>
           </div>
@@ -286,7 +299,7 @@ function AssistantView() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Describe your situation in your own words…"
-              className="surface h-12 min-w-0 flex-1 rounded-xl px-4 text-sm outline-none placeholder:text-[var(--text-muted)]"
+              className="input h-12 min-w-0 flex-1 px-4"
             />
             {/* Hidden entirely when unsupported — a dead microphone button is worse
                 than none, because the citizen keeps trying it. */}

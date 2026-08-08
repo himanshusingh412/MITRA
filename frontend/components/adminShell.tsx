@@ -6,14 +6,17 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Icon, cx } from './ui';
 
 /**
- * Admin session.
+ * Admin session — display only.
  *
- * Deliberately separate from the citizen store: a different storage key, a different
- * shell, and no shared provider. In the deployed system this maps to a distinct JWT
- * audience and cookie so a citizen token can never be replayed against an admin route.
- * The prototype keeps the same boundary in the UI so the separation is demonstrable.
+ * Access to /admin is decided by middleware.ts against an httpOnly, signed cookie this
+ * component cannot read or forge. What follows fetches the officer's name and role for
+ * the sidebar; if that fetch fails the user is already being redirected by middleware,
+ * so the component simply renders nothing rather than pretending to be a gate.
+ *
+ * Deliberately separate from the citizen store: different cookie, different signing key,
+ * different JWT audience, no shared provider — a citizen token can never be replayed
+ * against an admin route.
  */
-const ADMIN_SESSION_KEY = 'mitra.admin.session.v1';
 
 export interface AdminSession {
   name: string;
@@ -21,21 +24,24 @@ export interface AdminSession {
   district: string;
 }
 
-export function readAdminSession(): AdminSession | null {
+async function fetchAdminSession(): Promise<AdminSession | null> {
   try {
-    const raw = window.sessionStorage.getItem(ADMIN_SESSION_KEY);
-    return raw ? (JSON.parse(raw) as AdminSession) : null;
+    const res = await fetch('/api/admin/session', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return (body?.data as AdminSession) ?? null;
   } catch {
     return null;
   }
 }
 
-export function writeAdminSession(session: AdminSession) {
-  window.sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-}
-
-export function clearAdminSession() {
-  window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+export async function endAdminSession(): Promise<void> {
+  await fetch('/api/admin/login', { method: 'DELETE', credentials: 'same-origin' }).catch(
+    () => {},
+  );
 }
 
 const ADMIN_NAV = [
@@ -53,10 +59,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const s = readAdminSession();
-    setSession(s);
-    setChecked(true);
-    if (!s) router.replace('/admin/login');
+    let cancelled = false;
+    void (async () => {
+      const s = await fetchAdminSession();
+      if (cancelled) return;
+      setSession(s);
+      setChecked(true);
+      // Belt and braces only — middleware has already refused the request if the
+      // cookie is missing or invalid. This just avoids rendering an empty shell.
+      if (!s) router.replace('/admin/login');
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (!checked) {
@@ -111,9 +126,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <p className="muted text-xs">{session.district} district</p>
           </div>
           <button
-            onClick={() => {
-              clearAdminSession();
-              router.push('/admin/login');
+            onClick={async () => {
+              await endAdminSession();
+              router.replace('/admin/login');
+              router.refresh();
             }}
             className="muted flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors hover:bg-slate-100 dark:hover:bg-slate-500/10"
           >

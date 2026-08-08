@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { AppShell } from '@/components/shell';
 import { Badge, Button, Card, Icon, PageHeader, cx } from '@/components/ui';
-import { useStore } from '@/lib/store';
 import { CSC_CENTRES } from '@/lib/demoData';
 
 const FAQS = [
@@ -35,7 +34,6 @@ const FAQS = [
 
 export default function HelpPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const { t } = useStore();
 
   return (
     <AppShell>

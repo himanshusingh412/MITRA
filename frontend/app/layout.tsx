@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { StoreProvider } from '@/lib/store';
+import { Toaster } from '@/components/Toaster';
 
 export const metadata: Metadata = {
   title: 'MITRA — Digital Citizen Assistant',
@@ -29,7 +30,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to main content
         </a>
-        <StoreProvider>{children}</StoreProvider>
+        <StoreProvider>
+          {children}
+          {/* Connection and save status. Lives at the root so it survives route changes
+              and is present in the accessibility tree before any message arrives. */}
+          <Toaster />
+        </StoreProvider>
       </body>
     </html>
   );

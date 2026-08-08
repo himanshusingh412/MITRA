@@ -10,7 +10,7 @@ import { verifyDocumentSet } from '@/lib/documentVerification';
 import { getScheme } from '@/lib/schemes';
 
 export default function FamilyPage() {
-  const { user, allPeople, applications, documents, t } = useStore();
+  const { allPeople, applications, documents, t } = useStore();
 
   const members = useMemo(
     () =>
@@ -25,9 +25,6 @@ export default function FamilyPage() {
   );
 
   const totalEligible = members.reduce((sum, m) => sum + m.eligible, 0);
-  const totalActive = applications.filter(
-    (a) => !['approved', 'disbursed', 'rejected'].includes(a.status),
-  ).length;
   const totalBlockers = members.reduce(
     (sum, m) => sum + m.docReport.issues.filter((i) => i.severity === 'blocker').length,
     0,

@@ -266,7 +266,7 @@ export default function AboutPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {CAPABILITIES.map((c) => (
-              <article key={c.n} className="card flex flex-col p-5 transition-all hover:-translate-y-0.5 hover:shadow-lift">
+              <article key={c.n} className="card card-interactive flex flex-col p-5">
                 <div className="mb-4 flex items-start gap-3">
                   <span className="muted rounded-lg bg-[var(--canvas)] px-2 py-1 text-[11px] font-bold">
                     {c.n}

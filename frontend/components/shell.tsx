@@ -277,7 +277,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenu={() => setMenuOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        {/*
+          Keyed on pathname so the entrance animation replays on every route change,
+          giving navigation a sense of forward motion. The key also discards the previous
+          route's DOM outright, which is what prevents the old page from being visible
+          underneath the new one during the transition.
+        */}
+        <main key={pathname} className="route-enter flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          {children}
+        </main>
         <FeatureStrip />
       </div>
     </div>

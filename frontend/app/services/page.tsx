@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import { AppShell } from '@/components/shell';
-import { Button, Card, EmptyState, Icon, PageHeader } from '@/components/ui';
-import { useStore } from '@/lib/store';
+import { Card, EmptyState, Icon, PageHeader } from '@/components/ui';
+import Link from 'next/link';
 import { SERVICES } from '@/lib/demoData';
 
 export default function ServicesPage() {
-  const { t } = useStore();
   const [query, setQuery] = useState('');
 
   const filtered = SERVICES.filter(
@@ -34,7 +33,7 @@ export default function ServicesPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search services"
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
+            className="input-bare"
           />
         </div>
 
@@ -46,10 +45,17 @@ export default function ServicesPage() {
             action={{ label: 'Ask MITRA', href: '/assistant' }}
           />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {/* The whole card is the link, not a small button inside it — a 44px
+                target inside a 200px card is the wrong thing to ask a thumb to hit. */}
             {filtered.map((s) => (
-              <Card key={s.id} className="flex flex-col p-5">
+              <Link
+                key={s.id}
+                href={s.href}
+                className="card card-interactive group flex flex-col p-5"
+              >
                 <span
+                  aria-hidden="true"
                   className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
                   style={{ background: `${s.accent}18`, color: s.accent }}
                 >
@@ -57,11 +63,14 @@ export default function ServicesPage() {
                 </span>
                 <h3 className="text-[15px] font-bold">{s.name}</h3>
                 <p className="muted mt-1.5 flex-1 text-[13px] leading-relaxed">{s.description}</p>
-                <Button href="/assistant" variant="secondary" size="sm" className="mt-4 self-start">
-                  Get help with this
-                  <Icon name="ArrowRight" className="h-3.5 w-3.5" />
-                </Button>
-              </Card>
+                <span className="link-arrow mt-4">
+                  View details
+                  <Icon
+                    name="ArrowRight"
+                    className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+                  />
+                </span>
+              </Link>
             ))}
           </div>
         )}
@@ -69,7 +78,7 @@ export default function ServicesPage() {
         <Card className="flex flex-wrap items-center gap-4 p-5">
           <Icon name="Info" className="h-6 w-6 shrink-0 text-brand-500" />
           <p className="muted min-w-0 flex-1 text-[13px] leading-relaxed">
-            In this prototype, each service opens guidance from the MITRA assistant. In a deployed
+            Each service page explains what you can do, what to bring and where to go. In a deployed
             version these connect directly to UMANG, DigiLocker and the relevant departmental portals
             so the citizen never leaves MITRA.
           </p>

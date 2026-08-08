@@ -48,7 +48,7 @@ export default function SettingsPage() {
               <input
                 value={user.name}
                 onChange={(e) => patch('name', e.target.value)}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </Field>
 
@@ -59,7 +59,7 @@ export default function SettingsPage() {
                 max={120}
                 value={user.age}
                 onChange={(e) => patch('age', Number(e.target.value))}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </Field>
 
@@ -70,7 +70,7 @@ export default function SettingsPage() {
                 step={1000}
                 value={user.annualIncome}
                 onChange={(e) => patch('annualIncome', Number(e.target.value))}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </Field>
 
@@ -78,7 +78,7 @@ export default function SettingsPage() {
               <select
                 value={user.occupation}
                 onChange={(e) => patch('occupation', e.target.value as Occupation)}
-                className="surface h-11 w-full rounded-xl px-3 text-sm capitalize outline-none"
+                className="input h-11 capitalize"
               >
                 {OCCUPATIONS.map((o) => (
                   <option key={o} value={o}>
@@ -92,7 +92,7 @@ export default function SettingsPage() {
               <select
                 value={user.category}
                 onChange={(e) => patch('category', e.target.value as Category)}
-                className="surface h-11 w-full rounded-xl px-3 text-sm uppercase outline-none"
+                className="input h-11 uppercase"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -106,7 +106,7 @@ export default function SettingsPage() {
               <select
                 value={user.area}
                 onChange={(e) => patch('area', e.target.value as Area)}
-                className="surface h-11 w-full rounded-xl px-3 text-sm capitalize outline-none"
+                className="input h-11 capitalize"
               >
                 <option value="rural">Rural</option>
                 <option value="urban">Urban</option>
@@ -117,7 +117,7 @@ export default function SettingsPage() {
               <input
                 value={user.district}
                 onChange={(e) => patch('district', e.target.value)}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </Field>
 
@@ -125,7 +125,7 @@ export default function SettingsPage() {
               <input
                 value={user.state}
                 onChange={(e) => patch('state', e.target.value)}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </Field>
 
@@ -135,7 +135,7 @@ export default function SettingsPage() {
                 min={1}
                 value={user.familySize}
                 onChange={(e) => patch('familySize', Number(e.target.value))}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </Field>
 
@@ -146,7 +146,7 @@ export default function SettingsPage() {
                 step={0.1}
                 value={user.landHoldingHectares ?? 0}
                 onChange={(e) => patch('landHoldingHectares', Number(e.target.value))}
-                className="surface h-11 w-full rounded-xl px-3 text-sm outline-none"
+                className="input h-11"
               />
             </Field>
           </div>
@@ -173,7 +173,7 @@ export default function SettingsPage() {
                   max={100}
                   value={user.disabilityPercent ?? 0}
                   onChange={(e) => patch('disabilityPercent', Number(e.target.value))}
-                  className="surface h-11 w-full rounded-xl px-3 text-sm outline-none sm:w-48"
+                  className="input h-11 sm:w-48"
                 />
               </Field>
             </div>

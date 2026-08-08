@@ -10,12 +10,29 @@ Smart India Hackathon 2026 · Track: **Bharat Pragati** · Problem Statement: *D
 
 ## Run it
 
-No API keys. No database. No external services.
-
 **Frontend**
 ```bash
-cd frontend && npm install && npm run dev     # http://localhost:3000
+cd frontend
+cp .env.example .env        # then fill in the values below
+npm install
+npm run db:push             # apply the Prisma schema
+npm run db:seed             # seed the demo household
+npm run dev                 # http://localhost:3000
 ```
+
+Required in `frontend/.env`:
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres connection string (Neon pooled URL in production) |
+| `JWT_CITIZEN_SECRET` | Signs citizen session cookies — 32+ chars |
+| `JWT_ADMIN_SECRET` | Signs admin session cookies — must differ from the above |
+| `ADMIN_PASSWORD_HASH` | scrypt hash; generate with `npm run admin:hash -- 'password'` |
+| `AI_API_KEY` | *Optional.* Google Gemini key. Without it the assistant falls back to the on-device engine |
+
+The eligibility, recommendation and document-verification engines run entirely on-device
+and need no key. Only the conversational assistant calls out, and it degrades gracefully
+without one — see [SECURITY.md §1a](SECURITY.md) for exactly what is transmitted.
 
 **Backend** (optional — the frontend runs standalone)
 ```bash

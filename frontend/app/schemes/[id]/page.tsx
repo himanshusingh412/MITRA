@@ -103,7 +103,7 @@ export default function SchemeDetailPage({ params }: { params: Promise<{ id: str
               value={personId}
               onChange={(e) => setPersonId(e.target.value)}
               aria-label="Check eligibility for"
-              className="surface h-10 rounded-xl px-3 text-sm font-semibold outline-none"
+              className="input h-10 w-auto font-semibold"
             >
               {allPeople.map((p) => (
                 <option key={p.id} value={p.id}>

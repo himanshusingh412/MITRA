@@ -25,7 +25,7 @@ export function SchemeCard({
   return (
     <Link
       href={`/schemes/${scheme.id}`}
-      className="card group flex h-full flex-col p-5 transition-all hover:-translate-y-0.5 hover:shadow-lift focus-visible:-translate-y-0.5"
+      className="card card-interactive group flex h-full flex-col p-5"
     >
       <div className={cx('mb-4 flex h-12 w-12 items-center justify-center rounded-2xl', accent.bg, accent.fg)}>
         <Icon name={scheme.icon} className="h-6 w-6" />
@@ -56,7 +56,7 @@ export function SchemeRow({ scheme, result }: { scheme: Scheme; result: Eligibil
   return (
     <Link
       href={`/schemes/${scheme.id}`}
-      className="card group flex items-start gap-4 p-4 transition-all hover:shadow-lift sm:items-center"
+      className="card card-interactive group flex items-start gap-4 p-4 sm:items-center"
     >
       <div className={cx('flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl', accent.bg, accent.fg)}>
         <Icon name={scheme.icon} className="h-6 w-6" />

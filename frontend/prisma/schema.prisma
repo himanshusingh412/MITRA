@@ -1,0 +1,253 @@
+// MITRA — Prisma schema (Phase 4)
+//
+// Canonical data model, applied to Neon serverless Postgres. Kept consistent with the
+// TypeScript types in frontend/types/index.ts — those types and these models describe the
+// same domain, and lib/db/mappers.ts is the only place allowed to translate between them.
+//
+// Three principles drive the design:
+//  1. Eligibility criteria are NOT stored here. The rule engine reads the catalogue from
+//     lib/schemes.ts so the engine, the UI and the API can never disagree about a
+//     citizen's entitlement. Only citizen-owned, mutable state is persisted.
+//  2. Family members are Citizen rows linked by self-relation, not a separate shape —
+//     a dependent today is an account holder tomorrow, and that must not need a migration.
+//  3. Enum members use snake_case because Prisma forbids hyphens; the mapper converts to
+//     the hyphenated union values the UI uses ('under_review' <-> 'under-review').
+//  4. Every visitor gets an isolated household cloned from the template. There is no
+//     shared record any two people can both reach, so an authorisation mistake leaks a
+//     citizen's own sandbox rather than someone else's welfare data.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum Area {
+  rural
+  urban
+}
+
+enum Category {
+  general
+  sc
+  st
+  obc
+  ews
+  minority
+}
+
+enum Occupation {
+  farmer
+  student
+  salaried
+  self_employed
+  daily_wage
+  homemaker
+  unemployed
+  retired
+  artisan
+}
+
+enum ApplicationStatus {
+  draft
+  submitted
+  under_review
+  info_needed
+  approved
+  rejected
+  disbursed
+}
+
+enum DocumentSource {
+  upload
+  digilocker
+  csc
+}
+
+enum NotificationKind {
+  deadline
+  status
+  renewal
+  recommendation
+}
+
+// ─── Citizen identity ────────────────────────────────────────────────────────
+
+model Citizen {
+  // Stable application id ('u-ravi'), not a cuid — the seed, the demo data and the
+  // eligibility engine all address citizens by this handle.
+  id       String  @id
+  // Set when the citizen signs in with Google. Unique so an account cannot be duplicated.
+  googleSub String? @unique
+  // Null for anonymous demo sandboxes, set for registered accounts. Stored lowercased so
+  // "Ravi@x.com" and "ravi@x.com" cannot become two accounts.
+  email     String? @unique
+  // scrypt:N:r:p:salt:hash. Null for Google-only and anonymous accounts, so its absence
+  // is what makes password login impossible rather than a separate flag that can drift.
+  passwordHash String?
+  emailVerified Boolean @default(false)
+  /// Single-use, hashed. The raw token only ever exists in the reset link.
+  resetTokenHash String?
+  resetTokenExpiresAt DateTime?
+  /// Anonymous demo sandboxes are swept up; registered accounts never are.
+  isAnonymous Boolean @default(true)
+
+  name          String
+  age           Int
+  gender        Gender
+  state         String
+  district      String
+  area          Area
+  occupation    Occupation
+  annualIncome  Int
+  category      Category
+  familySize    Int      @default(1)
+  hasDisability Boolean  @default(false)
+  disabilityPercent Int?
+  landHoldingHectares Decimal? @db.Decimal(8, 2)
+
+  // Denormalised for fast filtering by the recommendation engine.
+  existingBenefits String[] @default([])
+  lifeEvents       String[] @default([])
+
+  // Set on dependents; null for the head of household. Self-relation so a dependent can
+  // be promoted to a full account without moving rows between tables.
+  primaryId String?
+  primary   Citizen?  @relation("Household", fields: [primaryId], references: [id], onDelete: Cascade)
+  dependents Citizen[] @relation("Household")
+  relation  String?
+  avatarColor String?
+
+  locale    String  @default("en")
+
+  // The seeded demo household every visitor sandbox is cloned from. Exactly one
+  // household carries this flag, and it is never served or mutated directly.
+  isTemplate Boolean @default(false)
+  // Last time a session touched this sandbox. Drives cleanup of abandoned clones.
+  lastSeenAt DateTime @default(now())
+
+  applications  Application[]
+  documents     Document[]
+  notifications Notification[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([state, district])
+  @@index([primaryId])
+  @@index([isTemplate])
+  @@index([lastSeenAt])
+  @@map("citizens")
+}
+
+// ─── Applications ────────────────────────────────────────────────────────────
+
+model Application {
+  id          String            @id
+  // Unique per applicant, not globally: a reference number is issued by a scheme, and
+  // two isolated sandboxes legitimately hold the same one.
+  referenceNo String
+  // Scheme handle from lib/schemes.ts. Deliberately not a foreign key — the catalogue
+  // is code, not data, and a scheme must never be deletable out from under an application.
+  schemeId    String
+  applicantId String
+  applicant   Citizen           @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  status       ApplicationStatus @default(draft)
+  progressStep Int               @default(1)
+  totalSteps   Int               @default(5)
+  district     String
+
+  // Snapshot of the eligibility result at submission. Kept because a citizen has a right
+  // to know why they were told they qualified, even after the rules change.
+  eligibilitySnapshot Json?
+  formData            Json?
+
+  timeline ApplicationEvent[]
+
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([applicantId, referenceNo])
+  @@index([applicantId, status])
+  @@index([status, district])
+  @@map("applications")
+}
+
+model ApplicationEvent {
+  id            String            @id @default(cuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  status ApplicationStatus
+  note   String            @db.Text
+  at     DateTime          @default(now())
+
+  @@index([applicationId, at])
+  @@map("application_events")
+}
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+model Document {
+  id      String         @id
+  ownerId String
+  owner   Citizen        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name   String
+  type   String
+  source DocumentSource @default(upload)
+
+  // Object-storage key. File bytes never sit in the database.
+  storageKey String?
+  mimeType   String?
+  sizeBytes  Int?
+
+  // OCR output: name, dob, address, gender, idNumber, fatherName. The most sensitive
+  // column in the schema — encrypted at rest by the application layer in Phase 9.
+  extracted Json?
+
+  verified   Boolean   @default(false)
+  uploadedAt DateTime  @default(now())
+  expiresAt  DateTime?
+
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([ownerId, type])
+  // Drives the renewal reminder job.
+  @@index([expiresAt])
+  @@map("documents")
+}
+
+// ─── Engagement ──────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String  @id
+  citizenId String
+  citizen   Citizen @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+
+  kind  NotificationKind
+  title String
+  body  String           @db.Text
+  href  String?
+  read  Boolean          @default(false)
+
+  at DateTime @default(now())
+
+  @@index([citizenId, read])
+  @@map("notifications")
+}

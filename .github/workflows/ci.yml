@@ -31,8 +31,16 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Lint
+        run: npm run lint
+
       - name: Engine test suite
         run: npx tsx lib/__tests__/engines.test.ts
+
+      # A known vulnerability in a production dependency must fail the merge, not be
+      # discovered in an audit later.
+      - name: Dependency audit
+        run: npm audit --audit-level=high
 
       - name: Production build
         env:
@@ -66,10 +74,14 @@ jobs:
           fi
           echo "No credential patterns found."
 
-      - name: Verify .env is not tracked
+      # Checks every directory, not just the repository root — the frontend holds the
+      # database URL and the session signing keys.
+      - name: Verify no .env file is tracked
         run: |
-          if git ls-files --error-unmatch .env 2>/dev/null; then
-            echo "::error::.env is tracked in git — remove it and rotate the credentials"
+          TRACKED=$(git ls-files | grep -E '(^|/)\.env(\..*)?$' | grep -v '\.env\.example$' || true)
+          if [ -n "$TRACKED" ]; then
+            echo "::error::A .env file is tracked in git — remove it and rotate the credentials"
+            echo "$TRACKED"
             exit 1
           fi
-          echo ".env is not tracked."
+          echo "No .env file is tracked."

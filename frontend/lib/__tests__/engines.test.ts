@@ -118,9 +118,29 @@ check('every issue carries a suggestion', report.issues.every((i) => i.suggestio
 check('does NOT compare Aadhaar number against PAN number', !report.issues.some((i) => i.field === 'idNumber' && i.documentIds.includes('d-pan-ravi')));
 check('does NOT flag Ram Dev vs Ramdev as a discrepancy', !report.issues.some((i) => i.field === 'fatherName'));
 check('score reflects only genuine problems', report.consistencyScore > 40, `got ${report.consistencyScore}`);
-check('blockers sort before warnings', (() => {
-  const idx = report.issues.findIndex((i) => i.severity === 'warning');
-  return idx === -1 || !report.issues.slice(idx).some((i) => i.severity === 'blocker');
+// Ordering contract changed deliberately: kind leads, severity orders within it. An
+// expiry check is a lookup; reconciling documents against each other is the inference,
+// and it should be read first. Severity is still communicated per issue by its badge.
+check('cross-document findings are read before expiry findings', (() => {
+  const firstExpiry = report.issues.findIndex((i) => i.kind === 'expiry');
+  const lastCross = report.issues.map((i) => i.kind).lastIndexOf('cross-document');
+  return firstExpiry === -1 || lastCross === -1 || lastCross < firstExpiry;
+})());
+
+check('within one kind, blockers still sort before warnings', (() => {
+  const byKind = new Map<string, string[]>();
+  for (const i of report.issues) {
+    byKind.set(i.kind, [...(byKind.get(i.kind) ?? []), i.severity]);
+  }
+  return [...byKind.values()].every((severities) => {
+    const idx = severities.indexOf('warning');
+    return idx === -1 || !severities.slice(idx).includes('blocker');
+  });
+})());
+
+check('expiry issues are categorised as expiry, not as an OCR field', (() => {
+  const expiryIssues = report.issues.filter((i) => i.kind === 'expiry');
+  return expiryIssues.length === 0 || expiryIssues.every((i) => i.category === 'Document expiry' && i.field === undefined);
 })());
 
 const anjali = FAMILY.find((f) => f.id === 'u-anjali')!;

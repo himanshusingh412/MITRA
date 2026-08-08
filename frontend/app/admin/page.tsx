@@ -1,7 +1,7 @@
 'use client';
 
 import { AdminShell } from '@/components/adminShell';
-import { Badge, Card, Icon, ProgressBar, Stat, StatusPill, cx, relativeDate } from '@/components/ui';
+import { Card, Icon, ProgressBar, Stat, StatusPill, relativeDate } from '@/components/ui';
 import {
   APPLICATIONS,
   COMPLAINTS,
@@ -56,10 +56,16 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="flex h-48 items-end gap-3">
+          {/*
+            The bar track carries an explicit height (h-40). A percentage height only
+            resolves against a parent with a definite height — under `flex-1` the track
+            computes to auto and every bar collapses to zero, which is why this chart
+            previously rendered as an empty axis.
+          */}
+          <div className="flex items-end gap-3">
             {MONTHLY_TREND.map((m) => (
               <div key={m.month} className="flex flex-1 flex-col items-center gap-2">
-                <div className="flex w-full flex-1 items-end justify-center gap-1">
+                <div className="flex h-40 w-full items-end justify-center gap-1">
                   <div
                     className="w-full max-w-[18px] rounded-t-md bg-brand-500 transition-all"
                     style={{ height: `${(m.applications / maxTrend) * 100}%` }}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AdminShell } from '@/components/adminShell';
-import { Badge, Button, Card, EmptyState, Icon, ProgressBar, StatusPill, Tabs, cx, formatDate } from '@/components/ui';
+import { Button, Card, EmptyState, Icon, ProgressBar, StatusPill, Tabs, formatDate } from '@/components/ui';
 import { APPLICATIONS } from '@/lib/demoData';
 import { getScheme } from '@/lib/schemes';
 import type { ApplicationStatus } from '@/types';

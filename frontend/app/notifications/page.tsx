@@ -44,7 +44,7 @@ export default function NotificationsPage() {
         {filtered.length === 0 ? (
           <EmptyState icon="BellOff" title={t('notif.empty')} body="New deadlines, renewals and application updates will appear here." />
         ) : (
-          <ul className="space-y-3">
+          <ul className="stagger space-y-3">
             {filtered.map((n) => {
               const style = KIND_STYLE[n.kind] ?? KIND_STYLE.status;
               const body = (

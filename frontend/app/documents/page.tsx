@@ -7,9 +7,8 @@ import { useStore } from '@/lib/store';
 import { verifyDocumentSet } from '@/lib/documentVerification';
 
 export default function DocumentsPage() {
-  const { user, allPeople, documents, addDocuments, t } = useStore();
+  const { user, allPeople, documents, t } = useStore();
   const [owner, setOwner] = useState('all');
-  const [importing, setImporting] = useState(false);
 
   const visible = documents.filter((d) => (owner === 'all' ? true : d.ownerId === owner));
   const report = useMemo(() => verifyDocumentSet(user, documents), [user, documents]);
@@ -27,43 +26,13 @@ export default function DocumentsPage() {
     (d) => d.expiresAt && new Date(d.expiresAt).getTime() - Date.now() < 90 * 86_400_000,
   );
 
-  /**
-   * Simulates a DigiLocker fetch. The real integration replaces this with the Issued
-   * Documents API; documents arriving this way are digitally signed, so they are marked
-   * verified and treated as authoritative when documents disagree.
-   */
-  function importDigiLocker() {
-    setImporting(true);
-    window.setTimeout(() => {
-      addDocuments([
-        {
-          id: `d-voter-${user.id}`,
-          name: 'Voter ID (EPIC)',
-          type: 'voter-id',
-          ownerId: user.id,
-          uploadedAt: new Date().toISOString(),
-          verified: true,
-          source: 'digilocker',
-          extracted: {
-            name: 'Ravi Kumar',
-            dob: '14/03/1992',
-            gender: 'Male',
-            address: 'Vill- Bahadurpur, PO- Kanti, Dist- Muzaffarpur, Bihar - 843130',
-            fatherName: 'Ram Dev Singh',
-          },
-        },
-      ]);
-      setImporting(false);
-    }, 1100);
-  }
-
   return (
     <AppShell>
       <div id="main" className="mx-auto max-w-[1000px] space-y-5">
         <PageHeader title={t('docs.title')} subtitle={t('docs.sub')}>
-          <Button variant="secondary" onClick={importDigiLocker} disabled={importing}>
-            <Icon name={importing ? 'Loader' : 'Download'} className={cx('h-4 w-4', importing && 'animate-spin')} />
-            {importing ? 'Fetching' : t('docs.importDigilocker')}
+          <Button href="/documents/digilocker" variant="secondary">
+            <Icon name="ShieldCheck" className="h-4 w-4" />
+            {t('docs.importDigilocker')}
           </Button>
           <Button href="/documents/verify">
             <Icon name="ScanSearch" className="h-4 w-4" />
