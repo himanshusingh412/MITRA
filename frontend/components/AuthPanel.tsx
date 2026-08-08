@@ -7,19 +7,18 @@ import { Button, Icon, cx } from '@/components/ui';
 type Mode = 'signin' | 'signup' | 'forgot' | 'reset';
 
 /**
- * Landing page with authentication.
+ * Citizen authentication form.
  *
- * Split-screen: the left panel states what MITRA does, the right panel signs you in.
- * The proposition sits beside the form rather than behind it because a citizen arriving
- * from a forwarded link has no idea what this is, and asking for a password before
- * answering that is how you lose them.
+ * Chrome-free so it can be dropped into the landing page's dialog, a dedicated route, or
+ * anywhere else that needs sign-in without duplicating four flows (sign in, sign up,
+ * forgot, reset) and their error handling.
  *
  * The guest path is kept and given real prominence. A welfare product that cannot be
  * looked at without registering excludes exactly the cautious, low-trust users it most
  * needs to reach — and it would make the SIH demo impossible to run in the thirty
  * seconds a judge actually gives you.
  */
-export function AuthLanding() {
+export function AuthPanel({ redirectTo = '/dashboard' }: { redirectTo?: string }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -68,13 +67,13 @@ export function AuthLanding() {
     try {
       if (mode === 'signin') {
         await post('login', { email, password, remember });
-        router.replace('/');
+        router.replace(redirectTo);
         router.refresh();
         return;
       }
       if (mode === 'signup') {
         await post('signup', { email, password, name, remember });
-        router.replace('/');
+        router.replace(redirectTo);
         router.refresh();
         return;
       }
@@ -99,7 +98,7 @@ export function AuthLanding() {
     setError('');
     try {
       await post('guest', {});
-      router.replace('/');
+      router.replace(redirectTo);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start the demo.');
@@ -122,70 +121,7 @@ export function AuthLanding() {
   }[mode];
 
   return (
-    <main id="main" className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
-      {/* ── Proposition ──────────────────────────────────────────────── */}
-      <section className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-600 via-brand-500 to-emerald-500 p-10 text-white lg:flex">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-3xl"
-        />
-        <div className="relative flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
-            <Icon name="Bot" className="h-6 w-6" />
-          </span>
-          <div className="leading-tight">
-            <p className="text-base font-extrabold tracking-tight">MITRA</p>
-            <p className="text-xs text-white/80">Digital Citizen Assistant</p>
-          </div>
-        </div>
-
-        <div className="relative max-w-[46ch]">
-          <h1 className="text-[32px] font-extrabold leading-tight tracking-tight">
-            Nearly three quarters of welfare rejections are clerical, not eligibility.
-          </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-white/85">
-            MITRA reads your documents, compares them against each other, and tells you what
-            would get your application rejected — before you submit it.
-          </p>
-
-          <ul className="mt-8 space-y-3.5">
-            {[
-              { icon: 'GitCompareArrows', t: 'Cross-document verification', d: 'Catches a swapped date of birth that a human reviewer would miss.' },
-              { icon: 'Users', t: 'Your whole household', d: 'Parents, children and dependents from one account.' },
-              { icon: 'Languages', t: 'In your language', d: 'Voice and text, English and Hindi.' },
-            ].map((f) => (
-              <li key={f.t} className="flex gap-3">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                  <Icon name={f.icon} className="h-4 w-4" />
-                </span>
-                <span>
-                  <span className="block text-sm font-bold">{f.t}</span>
-                  <span className="block text-[13px] leading-relaxed text-white/75">{f.d}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <p className="relative text-xs leading-relaxed text-white/65">
-          An independent prototype for Smart India Hackathon 2026. Not an official
-          Government of India product.
-        </p>
-      </section>
-
-      {/* ── Authentication ───────────────────────────────────────────── */}
-      <section className="flex items-center justify-center bg-[var(--canvas)] p-5 sm:p-8">
-        <div className="w-full max-w-[420px] route-enter">
-          <div className="mb-7 flex items-center gap-3 lg:hidden">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-emerald-400 text-white">
-              <Icon name="Bot" className="h-6 w-6" />
-            </span>
-            <div className="leading-tight">
-              <p className="text-base font-extrabold tracking-tight">MITRA</p>
-              <p className="muted text-xs">Digital Citizen Assistant</p>
-            </div>
-          </div>
-
+    <div>
           <h2 className="text-2xl font-extrabold tracking-tight">{heading}</h2>
           <p className="muted mt-1.5 text-sm">{subheading}</p>
 
@@ -370,15 +306,7 @@ export function AuthLanding() {
               shared, and you can create an account later.
             </p>
           </div>
-
-          <p className="muted mt-6 text-center text-xs">
-            <a href="/admin/login" className="hover:underline">
-              Government officer sign-in
-            </a>
-          </p>
-        </div>
-      </section>
-    </main>
+    </div>
   );
 }
 

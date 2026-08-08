@@ -1,21 +1,29 @@
+import type { Metadata } from 'next';
 import { readSession } from '@/lib/db/session';
 import { prisma } from '@/lib/db/client';
-import { AuthLanding } from '@/components/AuthLanding';
-import { CitizenDashboard } from '@/components/CitizenDashboard';
+import { LandingPage } from '@/components/LandingPage';
 
 /**
- * Entry point.
+ * The application's front door.
  *
- * `/` is both the landing page and the dashboard: unauthenticated visitors get the
- * sign-in experience, everyone else goes straight to their household. Keeping one route
- * rather than redirecting to `/login` means every "Home" link in the app stays correct,
- * a signed-in citizen never sees a sign-in screen flash before the redirect fires, and
- * there is no dangling `/login` for a search engine to index.
+ * `/` is always the landing page — never the dashboard, and never an automatic sign-in.
+ * A visitor is introduced to the platform first and then chooses a door: the citizen
+ * portal, which opens an auth dialog, or the government portal, which is a separate route
+ * with a separate session.
  *
- * The decision is made on the server from the signed session cookie, so the correct
- * screen is in the very first byte of HTML — no client-side flicker, and the dashboard
- * markup is never sent to someone who is not signed in.
+ * Session state is read on the server only to decide whether the primary call to action
+ * says "Continue as Citizen" or "Go to your dashboard". A signed-in citizen is never
+ * silently redirected past this page, because being bounced somewhere you did not ask to
+ * go is disorienting — and it would make the platform impossible to explain to someone
+ * you handed the link to.
  */
+
+export const metadata: Metadata = {
+  title: 'MITRA — One AI companion for every citizen’s government journey',
+  description:
+    'Discover the government schemes you qualify for, verify your documents before you apply, and track every application to the day the benefit arrives — in your own language.',
+};
+
 export default async function HomePage() {
   const citizenId = await readSession();
 
@@ -26,8 +34,5 @@ export default async function HomePage() {
       })
     : null;
 
-  // A signed token whose sandbox has been swept up is not a session.
-  if (!citizen) return <AuthLanding />;
-
-  return <CitizenDashboard />;
+  return <LandingPage signedIn={Boolean(citizen)} />;
 }

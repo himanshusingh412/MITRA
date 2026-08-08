@@ -9,7 +9,7 @@ import { Badge, Icon, cx } from './ui';
 import type { Locale } from '@/types';
 
 const NAV = [
-  { href: '/', icon: 'Home', key: 'nav.home' },
+  { href: '/dashboard', icon: 'Home', key: 'nav.home' },
   { href: '/schemes', icon: 'LayoutList', key: 'nav.schemes' },
   { href: '/services', icon: 'Grid2x2', key: 'nav.services' },
   { href: '/applications', icon: 'ClipboardList', key: 'nav.applications' },
@@ -106,7 +106,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Main navigation" className="flex h-full flex-col gap-1 p-4">
       <Link
-        href="/"
+        href="/dashboard"
         onClick={onNavigate}
         className="mb-6 flex items-center gap-3 rounded-xl px-1 py-1"
         aria-label="MITRA home"
