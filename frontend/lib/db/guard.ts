@@ -86,6 +86,24 @@ export function handleError(scope: string, e: unknown): NextResponse {
       { status: e.status },
     );
   }
+
+  const err = e as { name?: string; code?: string; message?: string } | null;
+  if (
+    err &&
+    typeof err === 'object' &&
+    (err.name === 'PrismaClientInitializationError' || err.code === 'P1001')
+  ) {
+    console.warn(`[api:${scope}] Database unreachable:`, err.message ?? 'Connection failed');
+    return NextResponse.json(
+      {
+        data: null,
+        error: { code: 'DATABASE_UNAVAILABLE', message: 'The database is currently unreachable.' },
+        meta: { offline: true },
+      },
+      { status: 503 },
+    );
+  }
+
   console.error(`[api:${scope}]`, e);
   return NextResponse.json(
     {

@@ -33,12 +33,18 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const citizenId = await readSession();
 
-  const citizen = citizenId
-    ? await prisma.citizen.findFirst({
+  let citizen = null;
+  if (citizenId) {
+    try {
+      citizen = await prisma.citizen.findFirst({
         where: { id: citizenId, deletedAt: null },
         select: { id: true },
-      })
-    : null;
+      });
+    } catch (e) {
+      console.warn('[HomePage] Database unreachable, serving public landing page cleanly:', e);
+      citizen = null;
+    }
+  }
 
   return (
     <div className={`${inter.variable} ${jakarta.variable}`}>

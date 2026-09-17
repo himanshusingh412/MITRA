@@ -13,15 +13,13 @@ import { CitizenDashboard } from '@/components/CitizenDashboard';
  */
 export default async function DashboardPage() {
   const citizenId = await readSession();
+  if (!citizenId) redirect('/');
 
-  const citizen = citizenId
-    ? await prisma.citizen.findFirst({
-        where: { id: citizenId, deletedAt: null },
-        select: { id: true },
-      })
-    : null;
+  const citizen = await prisma.citizen.findFirst({
+    where: { id: citizenId, deletedAt: null },
+    select: { id: true },
+  });
 
-  // A signed token whose sandbox has been swept up is not a session.
   if (!citizen) redirect('/');
 
   return <CitizenDashboard />;

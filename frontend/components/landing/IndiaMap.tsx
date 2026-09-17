@@ -531,7 +531,7 @@ export function IndiaMap({ className }: { className?: string }) {
                   onMouseLeave={() => setHoveredState(null)}
                   onClick={() => handleStateClick(state.name)}
                 >
-                  <title>{state.name}{isHub ? ' ★' : ''}</title>
+                  <title>{`${state.name}${isHub ? ' ★' : ''}`}</title>
                 </path>
               )
             })}

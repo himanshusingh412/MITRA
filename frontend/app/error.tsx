@@ -20,9 +20,25 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // The digest correlates to the server log entry without exposing anything sensitive.
-    console.error('[boundary]', error.digest ?? error.name);
+    // Log the error cleanly for developers without surfacing raw digest noise in overlays
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[boundary]', error.message || error.name, error.digest ? `(code: ${error.digest})` : '');
+    } else {
+      console.error('[boundary]', error.digest ?? error.name);
+    }
   }, [error]);
+
+  const handleReset = () => {
+    try {
+      reset();
+    } catch {
+      window.location.reload();
+    }
+  };
+
+  const handleGoHome = () => {
+    window.location.href = '/';
+  };
 
   return (
     <main
@@ -44,11 +60,11 @@ export default function GlobalError({
         </p>
 
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Button onClick={reset} size="lg">
+          <Button onClick={handleReset} size="lg">
             <Icon name="RotateCcw" className="h-4 w-4" />
             Try again
           </Button>
-          <Button href="/" variant="secondary" size="lg">
+          <Button onClick={handleGoHome} variant="secondary" size="lg">
             <Icon name="House" className="h-4 w-4" />
             Go to home
           </Button>
