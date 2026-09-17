@@ -64,6 +64,48 @@ def call_gemini_ai(prompt: str, context: str = "", locale: str = "en") -> str | 
         return None
     return None
 
+
+def call_claude_ai(prompt: str, context: str = "", locale: str = "en") -> str | None:
+    """Calls Anthropic Claude API using settings.ANTHROPIC_API_KEY and settings.ANTHROPIC_MODEL."""
+    if not settings.ANTHROPIC_API_KEY:
+        return None
+    url = "https://api.anthropic.com/v1/messages"
+
+    system_instruction = (
+        f"You are MITRA, an empathetic, highly accurate AI assistant for Indian government schemes and citizen services.\n"
+        f"Target language/locale: {locale}.\n"
+        f"Context on user's profile and matching schemes:\n{context}\n"
+        f"Respond concisely, clearly, and directly in the user's language without hallucinating unverified government rules."
+    )
+
+    payload = {
+        "model": settings.ANTHROPIC_MODEL,
+        "max_tokens": settings.AI_MAX_OUTPUT_TOKENS,
+        "temperature": settings.AI_TEMPERATURE,
+        "system": system_instruction,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": settings.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+    }
+    data = json.dumps(payload).encode("utf-8")
+
+    try:
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            res_json = json.loads(resp.read().decode("utf-8"))
+            content = res_json.get("content", [])
+            for block in content:
+                if block.get("type") == "text":
+                    return block.get("text", "").strip()
+    except Exception as e:
+        print(f"Claude API call warning: {e}")
+        return None
+    return None
+
 # Prefixes are deliberately open-ended (`pregnan` not `\bpregnan\b`) so inflected forms
 # match without enumerating every ending. Hinglish and transliterated terms are included
 # because that is how people actually type.
@@ -360,10 +402,12 @@ def ask(message: str, profile: dict[str, Any], locale: str = "en") -> dict[str, 
         return _reply(_t(locale, "topMatches"), [r["scheme"]["id"] for r in rows],
                       [("See all schemes", "/schemes")], detected)
 
-    if settings.AI_API_KEY:
+    if settings.AI_API_KEY or settings.ANTHROPIC_API_KEY:
         refs = top(3)
         context_info = f"Recommended matching scheme IDs: {refs}. Citizen profile: {enriched}"
         ai_reply = call_gemini_ai(message, context=context_info, locale=locale)
+        if not ai_reply:
+            ai_reply = call_claude_ai(message, context=context_info, locale=locale)
         if ai_reply:
             return _reply(ai_reply, refs, [("Browse all schemes", "/schemes")], detected)
 
