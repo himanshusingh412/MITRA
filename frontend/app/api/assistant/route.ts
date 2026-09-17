@@ -60,6 +60,86 @@ function minimise(profile: unknown): Record<string, unknown> {
   };
 }
 
+/** Thrown by a provider call so the caller can decide whether to fall through to the next one. */
+class ProviderError extends Error {
+  constructor(
+    public provider: 'gemini' | 'claude',
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** Calls Gemini (Google's Generative Language API). */
+async function callGemini(systemInstruction: string): Promise<{ text: string; model: string }> {
+  const apiKey = process.env.AI_API_KEY;
+  const model = process.env.AI_MODEL || 'gemini-3.1-flash-lite';
+  if (!apiKey) throw new ProviderError('gemini', 'not configured');
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      // Header rather than query string: URLs land in logs and proxies.
+      'x-goog-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: systemInstruction }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+    }),
+    // Fall back to the next provider rather than hanging the citizen.
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    // Logged server-side; never returned. Upstream bodies echo request metadata.
+    console.error('[api:assistant] gemini upstream %s', response.status, await response.text());
+    throw new ProviderError('gemini', `upstream ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (typeof text !== 'string' || !text.trim()) throw new ProviderError('gemini', 'empty response');
+
+  return { text, model };
+}
+
+/** Calls Claude (Anthropic's Messages API). Backup path when Gemini is unavailable or fails. */
+async function callClaude(systemInstruction: string, question: string): Promise<{ text: string; model: string }> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-latest';
+  if (!apiKey) throw new ProviderError('claude', 'not configured');
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      temperature: 0.2,
+      system: systemInstruction,
+      messages: [{ role: 'user', content: question }],
+    }),
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    console.error('[api:assistant] claude upstream %s', response.status, await response.text());
+    throw new ProviderError('claude', `upstream ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = data?.content?.find((b: { type?: string }) => b?.type === 'text')?.text;
+  if (typeof text !== 'string' || !text.trim()) throw new ProviderError('claude', 'empty response');
+
+  return { text, model };
+}
+
 export async function POST(req: NextRequest) {
   try {
     sameOrigin(req);
@@ -90,10 +170,7 @@ export async function POST(req: NextRequest) {
       ? (body!.locale as Locale)
       : 'en';
 
-    const apiKey = process.env.AI_API_KEY;
-    const model = process.env.AI_MODEL || 'gemini-3.1-flash-lite';
-
-    if (!apiKey) {
+    if (!process.env.AI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
       // Not an error the citizen can act on: the client falls back to the on-device
       // engine and the conversation continues.
       throw new HttpError('AI_UNAVAILABLE', 'The online assistant is not configured.', 503);
@@ -119,37 +196,33 @@ export async function POST(req: NextRequest) {
       '</citizen_question>',
     ].join('\n');
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    // Gemini first, Claude as backup. Either provider's key being absent is treated the
+    // same as that provider failing — it's just skipped, never an error the citizen sees.
+    let result: { text: string; model: string } | null = null;
+    let lastError: ProviderError | null = null;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Header rather than query string: URLs land in logs and proxies.
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: systemInstruction }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
-      }),
-      // Fall back to on-device reasoning rather than hanging the citizen.
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-    });
+    try {
+      result = await callGemini(systemInstruction);
+    } catch (e) {
+      if (e instanceof ProviderError) lastError = e;
+      else throw e;
+    }
 
-    if (!response.ok) {
-      // Logged server-side; never returned. Upstream bodies echo request metadata.
-      console.error('[api:assistant] upstream %s', response.status, await response.text());
+    if (!result) {
+      try {
+        result = await callClaude(systemInstruction, message);
+      } catch (e) {
+        if (e instanceof ProviderError) lastError = e;
+        else throw e;
+      }
+    }
+
+    if (!result) {
+      console.error('[api:assistant] all providers failed: %s', lastError?.message);
       throw new HttpError('AI_UNAVAILABLE', 'The assistant is unavailable right now.', 502);
     }
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (typeof text !== 'string' || !text.trim()) {
-      throw new HttpError('AI_UNAVAILABLE', 'The assistant is unavailable right now.', 502);
-    }
-
-    return ok({ text, model });
+    return ok(result);
   } catch (e) {
     if (e instanceof DOMException && e.name === 'TimeoutError') {
       return handleError(
