@@ -1,562 +1,582 @@
-'use client';
+'use client'
 
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { Icon, cx } from '@/components/ui';
-import { AuthPanel } from '@/components/AuthPanel';
-import { MitraLogo, MitraMark } from '@/components/Brand';
+import { motion, useScroll, useTransform } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import {
+  MessageSquare, Heart, FileText, Rocket, Users, MapPin,
+  Bell, ShieldCheck, Globe, Sparkles, ArrowRight, CheckCircle2, Mic, Languages,
+  Search, BookOpen, X,
+} from 'lucide-react'
+import { FloatingBackground } from '@/components/landing/FloatingBackground'
+import { MitraLogo } from '@/components/landing/Logo'
+import { ThemeToggle } from '@/components/landing/ThemeToggle'
+import { Button } from '@/components/landing/Button'
+import { IndiaMap } from '@/components/landing/IndiaMap'
+import { LanguageSwitcher } from '@/components/landing/LanguageSwitcher'
+import { I18nProvider, useI18n } from '@/components/landing/I18nProvider'
+import type { TranslationKey } from '@/lib/landing/translations'
+import { AuthPanel } from '@/components/AuthPanel'
 
 /**
- * Public landing page — the application's front door.
+ * The public landing page (design ported from mitra1).
  *
- * Nothing here authenticates on its own. A visitor sees what MITRA is, then chooses one
- * of two clearly separated doors: the citizen portal, which opens an auth dialog, or the
- * government portal, which is a different route with a different session entirely. That
- * separation is the point — mixing them is how an admin surface ends up reachable from a
- * citizen flow.
- *
- * Motion is CSS-only (see globals.css). The audience is rural users on low-end Android
- * over 3G, so the animation library that would make this marginally smoother would also
- * make the page measurably slower to reach interactive.
+ * Sign-up and log-in buttons open MITRA's citizen auth dialog; a visitor who is already
+ * signed in is sent to their dashboard instead.
  */
 export function LandingPage({ signedIn }: { signedIn: boolean }) {
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false)
 
   return (
-    <div className="min-h-dvh bg-[var(--canvas)]">
-      <SiteHeader signedIn={signedIn} onSignIn={() => setAuthOpen(true)} />
-
-      <main id="main">
-        <Hero signedIn={signedIn} onSignIn={() => setAuthOpen(true)} />
-        <TrustStrip />
-        <Features />
-        <HowItWorks />
-        <VerificationPreview />
-        <ClosingCta signedIn={signedIn} onSignIn={() => setAuthOpen(true)} />
-      </main>
-
-      <SiteFooter />
-
+    <I18nProvider>
+      <div className="landing-v2">
+        <LandingContent signedIn={signedIn} onSignIn={() => setAuthOpen(true)} />
+      </div>
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
-    </div>
-  );
+    </I18nProvider>
+  )
 }
 
-/* ── Header ─────────────────────────────────────────────────────────────── */
-
-function SiteHeader({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void }) {
+/** Wraps a citizen call-to-action: dashboard link when signed in, auth dialog otherwise. */
+function CitizenDoor({
+  signedIn,
+  onSignIn,
+  className,
+  children,
+}: {
+  signedIn: boolean
+  onSignIn: () => void
+  className?: string
+  children: React.ReactNode
+}) {
+  if (signedIn) {
+    return (
+      <Link href="/dashboard" className={className}>
+        {children}
+      </Link>
+    )
+  }
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--canvas)]/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1180px] items-center gap-4 px-5 py-3.5">
-        <MitraLogo className="h-9 shrink-0" />
-
-        <nav className="muted ml-auto hidden items-center gap-6 text-sm font-semibold md:flex">
-          <a href="#features" className="transition-colors hover:text-brand-500">Features</a>
-          <a href="#how" className="transition-colors hover:text-brand-500">How it works</a>
-          <a href="#verification" className="transition-colors hover:text-brand-500">Verification</a>
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2.5 md:ml-0">
-          <Link
-            href="/admin/login"
-            className="muted hidden h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors hover:bg-brand-50 sm:flex dark:hover:bg-brand-500/10"
-          >
-            <Icon name="Landmark" className="h-4 w-4" />
-            Government Portal
-          </Link>
-          {signedIn ? (
-            <Link
-              href="/dashboard"
-              className="press flex h-10 items-center gap-2 rounded-xl bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-gold-500 hover:text-brand-900 dark:bg-brand-400 dark:hover:bg-gold-500"
-            >
-              Go to dashboard
-              <Icon name="ArrowRight" className="h-4 w-4" />
-            </Link>
-          ) : (
-            <button
-              onClick={onSignIn}
-              className="press flex h-10 items-center gap-2 rounded-xl bg-brand-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-gold-500 hover:text-brand-900 dark:bg-brand-400 dark:hover:bg-gold-500"
-            >
-              Continue as Citizen
-            </button>
-          )}
-        </div>
-      </div>
-    </header>
-  );
+    <span className={className} onClick={onSignIn}>
+      {children}
+    </span>
+  )
 }
 
-/* ── Hero ───────────────────────────────────────────────────────────────── */
+function LandingContent({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({ target: containerRef })
+  const heroY = useTransform(scrollYProgress, [0, 0.3], [0, -50])
+  const { t } = useI18n()
 
-function Hero({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void }) {
-  return (
-    <section className="relative overflow-hidden">
-      {/* Soft gradient wash. Pointer-events-none so it can never eat a tap. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-50 via-transparent to-gold-50/70 dark:from-brand-400/12 dark:to-gold-500/5"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-gold-400/18 blur-3xl"
-      />
+  const features = [
+    { icon: MessageSquare, title: t('features.aiConversation.title'), desc: t('features.aiConversation.desc'), color: 'from-blue-500 to-cyan-500' },
+    { icon: Heart, title: t('features.lifeEvent.title'), desc: t('features.lifeEvent.desc'), color: 'from-pink-500 to-rose-500' },
+    { icon: Sparkles, title: t('features.eligibility.title'), desc: t('features.eligibility.desc'), color: 'from-purple-500 to-indigo-500' },
+    { icon: FileText, title: t('features.document.title'), desc: t('features.document.desc'), color: 'from-amber-500 to-orange-500' },
+    { icon: Rocket, title: t('features.application.title'), desc: t('features.application.desc'), color: 'from-green-500 to-emerald-500' },
+    { icon: Users, title: t('features.family.title'), desc: t('features.family.desc'), color: 'from-violet-500 to-purple-500' },
+    { icon: Bell, title: t('features.reminders.title'), desc: t('features.reminders.desc'), color: 'from-red-500 to-pink-500' },
+    { icon: MapPin, title: t('features.csc.title'), desc: t('features.csc.desc'), color: 'from-teal-500 to-cyan-500' },
+  ]
 
-      <div className="relative mx-auto grid max-w-[1180px] gap-12 px-5 py-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:py-24">
-        <div className="route-enter">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5 text-xs font-bold">
-            <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Smart India Hackathon 2026 · Bharat Pragati
-          </span>
+  const journey = [
+    { step: 1, title: t('journey.step1.title'), desc: t('journey.step1.desc') },
+    { step: 2, title: t('journey.step2.title'), desc: t('journey.step2.desc') },
+    { step: 3, title: t('journey.step3.title'), desc: t('journey.step3.desc') },
+    { step: 4, title: t('journey.step4.title'), desc: t('journey.step4.desc') },
+  ]
 
-          <h1 className="mt-5 text-[34px] font-extrabold leading-[1.08] tracking-tight sm:text-[44px] lg:text-[52px]">
-            One AI companion for every citizen&apos;s government journey
-          </h1>
-
-          <p className="muted mt-5 max-w-[56ch] text-[15px] leading-relaxed sm:text-base">
-            MITRA helps you discover the schemes you qualify for, verifies your documents
-            against each other before you apply, guides you through the application, and
-            tracks it to the day the benefit arrives — in your own language.
-          </p>
-
-          <div className="mt-8 flex flex-wrap gap-3">
-            {signedIn ? (
-              <Link
-                href="/dashboard"
-                className="press inline-flex h-12 items-center gap-2 rounded-xl bg-brand-500 px-6 text-base font-semibold text-white shadow-[var(--elev-2)] transition-colors hover:bg-gold-500 hover:text-brand-900 dark:bg-brand-400 dark:hover:bg-gold-500"
-              >
-                <Icon name="LayoutDashboard" className="h-5 w-5" />
-                Go to your dashboard
-              </Link>
-            ) : (
-              <button
-                onClick={onSignIn}
-                className="press inline-flex h-12 items-center gap-2 rounded-xl bg-brand-500 px-6 text-base font-semibold text-white shadow-[var(--elev-2)] transition-colors hover:bg-gold-500 hover:text-brand-900 dark:bg-brand-400 dark:hover:bg-gold-500"
-              >
-                <Icon name="UserRound" className="h-5 w-5" />
-                Continue as Citizen
-              </button>
-            )}
-
-            <Link
-              href="/admin/login"
-              className="press surface inline-flex h-12 items-center gap-2 rounded-xl px-6 text-base font-semibold transition-colors hover:bg-brand-50 dark:hover:bg-brand-500/10"
-            >
-              <Icon name="Landmark" className="h-5 w-5" />
-              Government / Admin Portal
-            </Link>
-          </div>
-
-          <p className="muted mt-4 text-xs leading-relaxed">
-            Citizen and government sessions are completely separate. Signing in to one
-            never grants access to the other.
-          </p>
-        </div>
-
-        <HeroIllustration />
-      </div>
-    </section>
-  );
-}
-
-/**
- * Hero illustration.
- *
- * Layered cards rather than a stock image: it shows the actual product surfaces — a
- * scheme match, a verification finding, a language switch — so the first thing a visitor
- * sees is what MITRA does, not decoration. Built from DOM elements so it stays crisp at
- * any density and costs nothing to download.
- */
-function HeroIllustration() {
-  return (
-    <div aria-hidden="true" className="relative mx-auto hidden h-[420px] w-full max-w-[460px] lg:block">
-      <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-brand-500/12 to-emerald-500/12 blur-2xl" />
-
-      {/* Assistant card */}
-      <div className="glass absolute left-0 top-6 w-[300px] rounded-2xl p-4 shadow-[var(--elev-2)] float-slow">
-        <div className="flex items-center gap-2.5">
-          <MitraMark className="h-8 w-8" title="" />
-          <p className="text-sm font-bold">MITRA Assistant</p>
-        </div>
-        <p className="mt-3 text-[13px] leading-relaxed">
-          &ldquo;मैं किसान हूँ और मेरी बेटी कॉलेज जाती है&rdquo;
-        </p>
-        <div className="mt-3 rounded-xl bg-[var(--surface)]/70 p-2.5 text-[12px] leading-relaxed">
-          Found 3 schemes for your household — PM-KISAN, Post Matric Scholarship and
-          Ayushman Bharat.
-        </div>
-      </div>
-
-      {/* Verification card */}
-      <div className="glass absolute right-0 top-[168px] w-[276px] rounded-2xl p-4 shadow-[var(--elev-2)] float-slower">
-        <div className="flex items-center gap-2">
-          <Icon name="ShieldAlert" className="h-4 w-4 text-amber-600" />
-          <p className="text-sm font-bold">Document check</p>
-        </div>
-        <p className="mt-2.5 text-[12px] leading-relaxed">
-          Aadhaar shows <strong>14/03/1992</strong>, Land Record shows{' '}
-          <strong>03/14/1992</strong> — day and month appear swapped.
-        </p>
-        <div className="mt-2.5 flex items-center gap-2">
-          <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">
-            Cross-document
-          </span>
-          <span className="muted text-[10px] font-semibold">92% confidence</span>
-        </div>
-      </div>
-
-      {/* Eligibility card */}
-      <div className="glass absolute bottom-2 left-8 w-[250px] rounded-2xl p-4 shadow-[var(--elev-2)] float-slow">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-bold">PM-KISAN</p>
-          <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
-            Eligible
-          </span>
-        </div>
-        <p className="muted mt-1 text-[11px]">4 of 4 criteria met</p>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--border)]">
-          <div className="h-full w-full rounded-full bg-emerald-500" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Trust strip ────────────────────────────────────────────────────────── */
-
-function TrustStrip() {
   const stats = [
-    { value: '18', label: 'Schemes in catalogue' },
-    { value: '22', label: 'Languages planned' },
-    { value: '100', label: 'Field pairs cross-checked' },
-    { value: '73%', label: 'Rejections that are clerical' },
-  ];
+    { value: '12+', label: t('stats.schemes') },
+    { value: '11', label: t('stats.languages') },
+    { value: 'AI', label: t('stats.ai') },
+    { value: '24/7', label: t('stats.available') },
+  ]
+
   return (
-    <section className="border-y border-[var(--border)] bg-[var(--surface)]">
-      <dl className="stagger mx-auto grid max-w-[1180px] grid-cols-2 gap-6 px-5 py-8 sm:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="text-center">
-            <dt className="sr-only">{s.label}</dt>
-            <dd>
-              <span className="block text-2xl font-extrabold tracking-tight tabular-nums sm:text-3xl">
-                {s.value}
-              </span>
-              <span className="muted mt-1 block text-xs font-semibold">{s.label}</span>
-            </dd>
+    <div ref={containerRef} className="relative min-h-screen overflow-x-hidden">
+      <FloatingBackground dense />
+
+      {/* Nav */}
+      <nav className="sticky top-0 z-50 px-2 sm:px-4 pt-4">
+        <div className="max-w-7xl mx-auto glass rounded-2xl px-3 sm:px-6 py-3 flex items-center justify-between gap-2">
+          <MitraLogo />
+          <div className="flex items-center gap-1 sm:gap-3">
+            <LanguageSwitcher />
+            <CitizenDoor signedIn={signedIn} onSignIn={onSignIn} className="hidden sm:block">
+              <Button variant="ghost" size="sm">{signedIn ? t('nav.dashboard') : t('nav.login')}</Button>
+            </CitizenDoor>
+            <CitizenDoor signedIn={signedIn} onSignIn={onSignIn}>
+              <Button size="sm" className="px-3 sm:px-4">
+                {signedIn ? t('nav.dashboard') : t('nav.getStarted')}
+                <ArrowRight className="hidden sm:block w-4 h-4" />
+              </Button>
+            </CitizenDoor>
+            <ThemeToggle />
           </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
+        </div>
+      </nav>
 
-/* ── Features ───────────────────────────────────────────────────────────── */
-
-const FEATURES = [
-  { icon: 'Sparkles', title: 'AI scheme recommendation', body: 'Describe your situation once. MITRA ranks every scheme against your household.', accent: 'brand' },
-  { icon: 'ScanSearch', title: 'AI document verification', body: 'Compares every document against every other and explains each disagreement.', accent: 'amber' },
-  { icon: 'ShieldCheck', title: 'DigiLocker integration', body: 'Pull documents signed at source. Signed copies outrank photographed ones.', accent: 'emerald' },
-  { icon: 'Mic', title: 'Voice assistant', body: 'Speak instead of typing. Works in Hindi and English, on-device.', accent: 'violet' },
-  { icon: 'Languages', title: 'Multilingual', body: 'Built to add Indian languages without touching a single component.', accent: 'blue' },
-  { icon: 'Users', title: 'Family dashboard', body: 'Parents, children and dependents managed from one household account.', accent: 'rose' },
-  { icon: 'ClipboardList', title: 'Application tracking', body: 'Every status change recorded with a reason, not just a colour.', accent: 'brand' },
-  { icon: 'BellRing', title: 'Smart reminders', body: 'Renewals and deadlines before they lapse — not after.', accent: 'amber' },
-  { icon: 'CircleCheck', title: 'AI eligibility checker', body: 'Criterion-by-criterion, so you know exactly why you qualify.', accent: 'emerald' },
-];
-
-const ACCENT: Record<string, string> = {
-  brand: 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300',
-  amber: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300',
-  emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
-  violet: 'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300',
-  blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300',
-  rose: 'bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
-};
-
-function Features() {
-  return (
-    <section id="features" className="mx-auto max-w-[1180px] scroll-mt-20 px-5 py-16 lg:py-20">
-      <SectionIntro
-        eyebrow="What it does"
-        title="Everything a citizen needs, in one place"
-        body="Nine capabilities that together cover the journey from not knowing a scheme exists to the benefit arriving."
-      />
-      <div className="stagger mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {FEATURES.map((f) => (
-          <article key={f.title} className="card card-interactive group p-5">
-            <span
-              aria-hidden="true"
-              className={cx('flex h-11 w-11 items-center justify-center rounded-2xl transition-transform group-hover:scale-105', ACCENT[f.accent])}
-            >
-              <Icon name={f.icon} className="h-5 w-5" />
+      {/* Hero */}
+      <section className="relative pt-20 pb-24 px-4">
+        <div className="max-w-5xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card mb-8"
+          >
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              🇮🇳 {t('hero.badge')}
             </span>
-            <h3 className="mt-4 text-[15px] font-bold">{f.title}</h3>
-            <p className="muted mt-1.5 text-[13px] leading-relaxed">{f.body}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
+          </motion.div>
 
-/* ── How it works ───────────────────────────────────────────────────────── */
-
-function HowItWorks() {
-  const steps = [
-    { icon: 'Search', title: 'Discover', body: 'Tell MITRA about yourself once, by voice or text.' },
-    { icon: 'ScanSearch', title: 'Verify', body: 'Documents are cross-checked before anything is submitted.' },
-    { icon: 'Send', title: 'Apply', body: 'Guided step by step with your details filled in.' },
-    { icon: 'Activity', title: 'Track', body: 'Every status change, with the reason behind it.' },
-    { icon: 'IndianRupee', title: 'Receive', body: 'Reminders keep certificates valid so payment is not held up.' },
-  ];
-
-  return (
-    <section id="how" className="scroll-mt-20 border-y border-[var(--border)] bg-[var(--surface)]">
-      <div className="mx-auto max-w-[1180px] px-5 py-16 lg:py-20">
-        <SectionIntro
-          eyebrow="How it works"
-          title="Five steps, start to benefit"
-          body="The same journey a citizen makes today — with the failure points removed."
-        />
-
-        <ol className="stagger relative mt-12 grid gap-8 md:grid-cols-5 md:gap-4">
-          {/* The connecting rail. Hidden on mobile, where the list reads vertically. */}
-          <div
-            aria-hidden="true"
-            className="absolute left-0 right-0 top-[26px] hidden h-0.5 bg-gradient-to-r from-brand-200 via-brand-400 to-emerald-400 md:block dark:from-brand-500/30 dark:via-brand-500/50 dark:to-emerald-500/40"
-          />
-          {steps.map((s, i) => (
-            <li key={s.title} className="relative flex gap-4 md:block">
-              <span className="relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-[var(--border)] bg-[var(--canvas)] text-brand-500 md:mx-auto">
-                <Icon name={s.icon} className="h-6 w-6" />
-              </span>
-              <div className="md:mt-4 md:text-center">
-                <p className="muted text-[11px] font-bold uppercase tracking-wide">Step {i + 1}</p>
-                <h3 className="mt-0.5 text-[15px] font-bold">{s.title}</h3>
-                <p className="muted mt-1 text-[13px] leading-relaxed">{s.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
-  );
-}
-
-/* ── Verification preview ───────────────────────────────────────────────── */
-
-const PIPELINE = [
-  { icon: 'Upload', title: 'Documents arrive', body: 'Uploaded by you, or fetched signed from DigiLocker.' },
-  { icon: 'ScanText', title: 'AI extracts fields', body: 'Name, date of birth, address, gender, ID number, father’s name.' },
-  { icon: 'GitCompareArrows', title: 'Cross-document check', body: 'Every document compared against every other — 100 field pairs.' },
-  { icon: 'TriangleAlert', title: 'Mismatch detected', body: '“Day and month appear swapped between the two documents.”' },
-  { icon: 'Lightbulb', title: 'Correction suggested', body: 'Which document to fix, to which value, and where to go.' },
-  { icon: 'CircleCheck', title: 'Ready to apply', body: 'A downloadable report you can carry to a service centre.' },
-];
-
-function VerificationPreview() {
-  return (
-    <section id="verification" className="mx-auto max-w-[1180px] scroll-mt-20 px-5 py-16 lg:py-20">
-      <SectionIntro
-        eyebrow="Flagship capability"
-        title="The rejection you never receive"
-        body="Nearly three quarters of welfare rejections are clerical — a spelling variant, a swapped date, a lapsed certificate. MITRA finds them before submission, and explains why each one matters."
-      />
-
-      <div className="mt-10 grid gap-5 lg:grid-cols-[1fr_1.1fr] lg:items-start">
-        <ol className="stagger space-y-2.5">
-          {PIPELINE.map((s, i) => (
-            <li key={s.title} className="card card-interactive flex gap-3.5 p-4">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--canvas)] text-brand-500">
-                <Icon name={s.icon} className="h-4.5 w-4.5" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold">
-                  <span className="muted mr-1.5 tabular-nums">{i + 1}.</span>
-                  {s.title}
-                </p>
-                <p className="muted mt-0.5 text-[13px] leading-relaxed">{s.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-
-        {/* A real finding, in the shape the product actually renders it. */}
-        <div className="card overflow-hidden lg:sticky lg:top-24">
-          <div className="border-b border-[var(--border)] bg-[var(--canvas)] px-5 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold">Verification report</p>
-                <p className="muted text-xs">9 documents · 100 field pairs compared</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-extrabold tabular-nums text-amber-600">54%</p>
-                <p className="muted text-[10px] font-bold uppercase tracking-wide">Consistency</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3 p-5">
-            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-amber-200/70 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-900 dark:bg-amber-500/25 dark:text-amber-200">
-                  Worth fixing
-                </span>
-                <span className="rounded-md bg-brand-100 px-2 py-0.5 text-[10px] font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
-                  Cross-document
-                </span>
-                <span className="muted ml-auto text-[11px] font-semibold">92% confidence</span>
-              </div>
-              <p className="mt-2.5 text-sm font-bold">
-                Date of birth differs between Aadhaar Card and Land Record
-              </p>
-              <p className="muted mt-1 text-[13px] leading-relaxed">
-                Aadhaar Card says &ldquo;14/03/1992&rdquo;, Land Record says
-                &ldquo;03/14/1992&rdquo;. Day and month appear swapped between the two
-                documents.
-              </p>
-              <div className="mt-3 rounded-lg bg-[var(--surface)] p-3">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-brand-600 dark:text-brand-300">
-                  What to do
-                </p>
-                <p className="mt-1 text-[13px] leading-relaxed">
-                  Apply for a correction on your Land Record so it matches your Aadhaar —{' '}
-                  <strong>14/03/1992</strong>.
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-[var(--border)] p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                  Will likely cause rejection
-                </span>
-                <span className="muted rounded-md bg-[var(--canvas)] px-2 py-0.5 text-[10px] font-bold">
-                  Document expiry
-                </span>
-              </div>
-              <p className="mt-2.5 text-sm font-bold">Income Certificate has expired</p>
-              <p className="muted mt-1 text-[13px] leading-relaxed">
-                It lapsed 36 days ago. Most departments reject applications carrying an
-                expired certificate outright.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── Closing ────────────────────────────────────────────────────────────── */
-
-function ClosingCta({ signedIn, onSignIn }: { signedIn: boolean; onSignIn: () => void }) {
-  return (
-    <section className="mx-auto max-w-[1180px] px-5 pb-20">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-gold-500 px-6 py-14 text-center text-white sm:px-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl"
-        />
-        <div className="relative">
-          <h2 className="mx-auto max-w-[22ch] text-[28px] font-extrabold leading-tight tracking-tight sm:text-[34px]">
-            Find out what you are entitled to
-          </h2>
-          <p className="mx-auto mt-4 max-w-[52ch] text-[15px] leading-relaxed text-white/85">
-            It takes about two minutes, and you can look around before creating an account.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {signedIn ? (
-              <Link
-                href="/dashboard"
-                className="press inline-flex h-12 items-center gap-2 rounded-xl bg-white px-6 text-base font-bold text-brand-600 transition-transform"
-              >
-                Go to your dashboard
-                <Icon name="ArrowRight" className="h-5 w-5" />
-              </Link>
-            ) : (
-              <button
-                onClick={onSignIn}
-                className="press inline-flex h-12 items-center gap-2 rounded-xl bg-white px-6 text-base font-bold text-brand-600 transition-transform"
-              >
-                Continue as Citizen
-                <Icon name="ArrowRight" className="h-5 w-5" />
-              </button>
-            )}
-            <Link
-              href="/admin/login"
-              className="press inline-flex h-12 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 text-base font-semibold text-white backdrop-blur transition-colors hover:bg-white/20"
+          <motion.div style={{ y: heroY }}>
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.1 }}
+              className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight font-display leading-[1.05]"
             >
-              <Icon name="Landmark" className="h-5 w-5" />
-              Government Portal
+              <span className="gradient-text">{t('hero.title1')}</span>
+              <br />
+              <span className="text-3xl sm:text-4xl md:text-5xl">
+                {t('hero.title2')}
+              </span>
+              <br />
+              <span className="text-3xl sm:text-4xl md:text-5xl gradient-text-saffron">
+                {t('hero.title3')}
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="mt-8 text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed"
+            >
+              {t('hero.subtitle')}
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="mt-10 flex flex-wrap items-center justify-center gap-4"
+            >
+              <CitizenDoor signedIn={signedIn} onSignIn={onSignIn}>
+                <Button size="lg" className="group">
+                  {signedIn ? t('nav.dashboard') : t('hero.cta.start')}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </CitizenDoor>
+              {!signedIn && (
+                <CitizenDoor signedIn={signedIn} onSignIn={onSignIn}>
+                  <Button variant="secondary" size="lg">
+                    {t('hero.cta.account')}
+                  </Button>
+                </CitizenDoor>
+              )}
+            </motion.div>
+
+            {/* Stats */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.7 }}
+              className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto"
+            >
+              {stats.map((stat) => (
+                <div key={stat.label} className="glass-card p-4 text-center">
+                  <div className="text-3xl font-bold gradient-text">{stat.value}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{stat.label}</div>
+                </div>
+              ))}
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* India Map Section */}
+      <section className="py-12 px-4" id="ai-showcase">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-8"
+          >
+            <h2 className="text-2xl sm:text-3xl font-bold font-display text-slate-900 dark:text-white">
+              {t('map.title')}
+            </h2>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+              {t('map.subtitle')}
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <IndiaMap />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Digital Citizen Assistant Section */}
+      <section id="digital-citizen" className="py-20 px-4 relative overflow-hidden">
+        {/* Background gradient */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-saffron-50/50 via-transparent to-transparent dark:from-saffron-950/10" />
+
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-saffron-100 dark:bg-saffron-900/30 text-saffron-dark dark:text-saffron-light text-sm font-semibold mb-4">
+              <Globe className="w-4 h-4" />
+              {t('dca.badge')}
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold font-display text-slate-900 dark:text-white">
+              {t('dca.title')}{' '}
+              <span className="gradient-text-saffron">{t('dca.titleHighlight')}</span>
+            </h2>
+            <p className="mt-4 text-base text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
+              {t('dca.subtitle')}
+            </p>
+          </motion.div>
+
+          {/* Feature cards */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {[
+              { icon: Languages, key: 'feature1' },
+              { icon: Search, key: 'feature2' },
+              { icon: Mic, key: 'feature3' },
+              { icon: BookOpen, key: 'feature4' },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="glass-card p-6 group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-saffron-400 to-saffron-600 flex items-center justify-center mb-4 transition-transform group-hover:scale-110">
+                  <item.icon className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2 text-slate-900 dark:text-white">{t(`dca.${item.key}.title` as TranslationKey)}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t(`dca.${item.key}.desc` as TranslationKey)}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Stats banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="glass-card p-8"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+              {[
+                { value: '50K+', label: t('dca.stat1') },
+                { value: '11', label: t('dca.stat2') },
+                { value: '200+', label: t('dca.stat3') },
+                { value: '<3s', label: t('dca.stat4') },
+              ].map((stat, i) => (
+                <div key={i}>
+                  <div className="text-3xl font-bold gradient-text-saffron">{stat.value}</div>
+                  <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* CTA */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mt-8"
+          >
+            <Link href="/assistant">
+              <Button size="lg" className="bg-gradient-to-r from-saffron-500 to-saffron-600 hover:from-saffron-600 hover:to-saffron-700 text-white gap-2">
+                <MessageSquare className="w-5 h-5" />
+                {t('dca.cta')}
+                <ArrowRight className="w-4 h-4" />
+              </Button>
             </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Journey Section */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl sm:text-4xl font-bold font-display">
+              {t('journey.title').split(' ')[0]} <span className="gradient-text">{t('journey.title').split(' ').slice(1).join(' ')}</span>
+            </h2>
+            <p className="mt-4 text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+              {t('journey.subtitle')}
+            </p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {journey.map((item, i) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="glass-card p-6"
+              >
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-mitra-blue to-mitra-purple flex items-center justify-center text-white font-bold text-lg mb-4">
+                  {item.step}
+                </div>
+                <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{item.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
-      </div>
-    </section>
-  );
-}
+      </section>
 
-function SiteFooter() {
-  return (
-    <footer className="border-t border-[var(--border)] bg-[var(--surface)]">
-      <div className="mx-auto max-w-[1180px] px-5 py-8">
-        <div className="flex flex-wrap items-center gap-4">
-          <MitraLogo className="h-9" showDescriptor={false} />
-          <p className="muted text-sm">
-            Multilingual Intelligent Technology for Responsive Assistance
-          </p>
+      {/* Features */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl sm:text-4xl font-bold font-display">
+              {t('features.title')}{' '}
+              <span className="gradient-text">{t('features.titleHighlight')}</span>
+            </h2>
+            <p className="mt-4 text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+              {t('features.subtitle')}
+            </p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: (i % 4) * 0.1 }}
+                className="glass-card p-6 group"
+              >
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                  <feature.icon className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-semibold mb-2">{feature.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{feature.desc}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
-        <p className="muted mt-4 max-w-[80ch] text-xs leading-relaxed">
-          An independent prototype built for Smart India Hackathon 2026. It is not an
-          official Government of India product. Eligibility results are advisory — always
-          confirm at a Common Service Centre before you rely on them.
-        </p>
-      </div>
-    </footer>
-  );
-}
+      </section>
 
-function SectionIntro({ eyebrow, title, body }: { eyebrow: string; title: string; body: string }) {
-  return (
-    <div className="mx-auto max-w-[60ch] text-center">
-      <p className="text-xs font-bold uppercase tracking-wide text-brand-500">{eyebrow}</p>
-      <h2 className="mt-2.5 text-[26px] font-extrabold leading-tight tracking-tight sm:text-[32px]">
-        {title}
-      </h2>
-      <p className="muted mt-3.5 text-[15px] leading-relaxed">{body}</p>
+      {/* AI Showcase */}
+      <section className="py-20 px-4">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="glass-card p-8 sm:p-12"
+          >
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-1 text-center md:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 text-xs font-medium mb-4">
+                  <Mic className="w-3 h-3" />
+                  {t('aiShowcase.badge')}
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold mb-4">
+                  {t('aiShowcase.title')} <span className="gradient-text">{t('aiShowcase.titleHighlight')}</span>
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 mb-6">
+                  {t('aiShowcase.desc')}
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                  {['हिन्दी', 'English', 'தமிழ்', 'తెలుగు', 'বাংলা', 'ગુજરાતી'].map((lang) => (
+                    <span key={lang} className="px-3 py-1 rounded-full glass text-sm font-medium">
+                      {lang}
+                    </span>
+                  ))}
+                  <span className="px-3 py-1 rounded-full glass text-sm font-medium text-slate-400">
+                    {t('aiShowcase.more')}
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className="space-y-3">
+                  <div className="glass rounded-2xl rounded-tr-sm p-4 max-w-[90%] ml-auto">
+                    <p className="text-sm">&ldquo;मैं एक किसान हूँ, उत्तर प्रदेश से। मुझे कौन सी योजनाएँ मिल सकती हैं?&rdquo;</p>
+                  </div>
+                  <div className="glass rounded-2xl rounded-tl-sm p-4 max-w-[90%]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-6 h-6 rounded-full gradient-mitra flex items-center justify-center text-xs text-white font-bold">M</div>
+                      <span className="text-xs font-medium">MITRA AI</span>
+                    </div>
+                    <p className="text-sm">🌾 आपके लिए कुछ महत्वपूर्ण योजनाएँ: PM-Kisan (₹6,000/वर्ष), फसल बीमा योजना, किसान क्रेडिट कार्ड...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Security */}
+      <section className="py-20 px-4">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card mb-4">
+              <ShieldCheck className="w-4 h-4 text-green-500" />
+              <span className="text-sm font-medium">{t('security.badge')}</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold font-display">
+              {t('security.title')} <span className="gradient-text-saffron">{t('security.titleHighlight')}</span>
+            </h2>
+            <p className="mt-4 text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+              {t('security.subtitle')}
+            </p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              { icon: ShieldCheck, title: t('security.jwt.title'), desc: t('security.jwt.desc') },
+              { icon: Globe, title: t('security.rbac.title'), desc: t('security.rbac.desc') },
+              { icon: Languages, title: t('security.encrypted.title'), desc: t('security.encrypted.desc') },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="glass-card p-6 text-center"
+              >
+                <item.icon className="w-8 h-8 mx-auto mb-3 text-mitra-blue" style={{ color: 'var(--color-mitra-blue)' }} />
+                <h3 className="font-semibold mb-1">{item.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-20 px-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          className="max-w-4xl mx-auto text-center"
+        >
+          <div className="relative glass-card p-12 sm:p-16 overflow-hidden">
+            <div className="absolute inset-0 gradient-mitra-soft opacity-50" />
+            <div className="relative z-10">
+              <h2 className="text-3xl sm:text-4xl font-bold font-display mb-4">
+                {t('cta.title')}
+              </h2>
+              <p className="text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto mb-8">
+                {t('cta.subtitle')}
+              </p>
+              <CitizenDoor signedIn={signedIn} onSignIn={onSignIn}>
+                <Button size="lg" className="group">
+                  {signedIn ? t('nav.dashboard') : t('cta.button')}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </CitizenDoor>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  {t('cta.noAadhaar')}
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  {t('cta.multilingual')}
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  {t('cta.free')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 px-4 border-t border-slate-200 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <MitraLogo size={32} />
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
+              {t('footer.copy')}
+            </p>
+            <div className="flex items-center gap-4 text-sm">
+              <Link href="/admin/login" className="text-slate-500 hover:text-mitra-blue transition-colors">
+                {t('nav.adminPortal')}
+              </Link>
+            </div>
+          </div>
+          <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-600">
+            {t('footer.built')}
+          </div>
+        </div>
+      </footer>
     </div>
-  );
+  )
 }
 
-/* ── Auth dialog ────────────────────────────────────────────────────────── */
 
 /**
- * Citizen authentication, in a modal.
- *
- * Focus is moved into the dialog on open and restored to the trigger on close, Escape
- * dismisses, and the background is inert to a screen reader — a modal that traps sighted
- * users but not keyboard users is worse than no modal.
+ * Citizen authentication, in a modal (kept from MITRA's previous landing page).
+ * Focus moves into the dialog, Escape closes it, and focus returns to the trigger.
  */
 function AuthDialog({ onClose }: { onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const returnFocusTo = useRef<Element | null>(null);
+  const ref = useRef<HTMLDivElement>(null)
+  const returnFocusTo = useRef<Element | null>(null)
 
   useEffect(() => {
-    returnFocusTo.current = document.activeElement;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    document.addEventListener('keydown', onKey);
-    // Stop the page behind scrolling under the dialog on mobile.
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    returnFocusTo.current = document.activeElement
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
 
-    ref.current?.querySelector<HTMLElement>('input, button')?.focus();
+    ref.current?.querySelector<HTMLElement>('input, button')?.focus()
 
     return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
-      (returnFocusTo.current as HTMLElement | null)?.focus?.();
-    };
-  }, [onClose]);
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = previousOverflow
+      ;(returnFocusTo.current as HTMLElement | null)?.focus?.()
+    }
+  }, [onClose])
 
   return (
     <div
@@ -572,25 +592,20 @@ function AuthDialog({ onClose }: { onClose: () => void }) {
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <MitraMark className="h-10 w-10" title="" />
-            <div className="leading-tight">
-              <p id="auth-dialog-title" className="text-base font-extrabold tracking-tight">
-                Citizen Portal
-              </p>
-              <p className="muted text-xs">Your household, your documents</p>
-            </div>
+            <MitraLogo size={40} />
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
             className="muted -mr-1.5 -mt-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-[var(--canvas)]"
           >
-            <Icon name="X" className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
+        <p id="auth-dialog-title" className="sr-only">Citizen Portal</p>
 
         <AuthPanel redirectTo="/dashboard" />
       </div>
     </div>
-  );
+  )
 }

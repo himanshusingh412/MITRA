@@ -249,6 +249,83 @@
   }
 }
 
+/* ── Landing page (design ported from mitra1) ─────────────────────────────
+   Everything is scoped under .landing-v2 so these glass/gradient styles never leak
+   into the dashboard, which has its own .glass and card styles. */
+.landing-v2 {
+  /* Colour tokens the ported components read directly (e.g. the India map's SVG fills). */
+  --color-saffron: #ff9933;
+  --color-saffron-light: #ffb366;
+  --color-saffron-dark: #e67500;
+  --color-india-green: #138808;
+  --color-mitra-blue: #2563eb;
+  --color-mitra-purple: #7c3aed;
+  --lp-bg: #f8fafc;
+  --lp-glass-bg: rgba(255, 255, 255, 0.65);
+  --lp-glass-border: rgba(255, 255, 255, 0.3);
+  --lp-shadow: rgba(0, 0, 0, 0.06);
+  --lp-text: #0f172a;
+  background-color: var(--lp-bg);
+  color: var(--lp-text);
+  font-family: var(--font-inter), var(--font-sans);
+  /* Own stacking context so the floating background (z -10) paints above this fill. */
+  position: relative;
+  isolation: isolate;
+}
+
+.dark .landing-v2 {
+  --lp-bg: #050816;
+  --lp-glass-bg: rgba(15, 23, 42, 0.6);
+  --lp-glass-border: rgba(255, 255, 255, 0.1);
+  --lp-shadow: rgba(0, 0, 0, 0.3);
+  --lp-text: #f1f5f9;
+}
+
+.landing-v2 .glass {
+  background: var(--lp-glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--lp-glass-border);
+  box-shadow: 0 8px 32px var(--lp-shadow);
+}
+
+.landing-v2 .glass-card {
+  background: var(--lp-glass-bg);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--lp-glass-border);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px var(--lp-shadow);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.landing-v2 .glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px var(--lp-shadow);
+}
+
+.landing-v2 .gradient-mitra {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+}
+
+.landing-v2 .gradient-mitra-soft {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
+}
+
+.landing-v2 .gradient-text {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.landing-v2 .gradient-text-saffron {
+  background: linear-gradient(135deg, #ff9933 0%, #e67500 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* Every animation in the product is decorative. Users who ask the OS to reduce motion
    get the full interface with none of it.
 

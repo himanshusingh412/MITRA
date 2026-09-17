@@ -12,6 +12,27 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Landing page palette (ported from mitra1): tricolour-inspired saffron, green,
+        // navy and the blue→purple gradient used on its buttons and headings.
+        saffron: {
+          DEFAULT: '#FF9933',
+          light: '#FFB366',
+          dark: '#E67500',
+          50: '#FFF7ED',
+          100: '#FFEDD5',
+          200: '#FED7AA',
+          300: '#FDBA74',
+          400: '#FB923C',
+          500: '#F97316',
+          600: '#EA580C',
+          700: '#C2410C',
+          900: '#7C2D12',
+          950: '#431407',
+        },
+        'india-green': { DEFAULT: '#138808', light: '#1BA30D', dark: '#0A6604' },
+        navy: { DEFAULT: '#0A0E27', light: '#1A1F3A', deep: '#050816' },
+        'mitra-blue': { DEFAULT: '#2563EB', light: '#3B82F6', dark: '#1D4ED8' },
+        'mitra-purple': { DEFAULT: '#7C3AED', light: '#8B5CF6', dark: '#6D28D9' },
         // Deep navy, taken from the logo's figure. Ramped rather than tinted so that
         // 500 (the interactive default) clears 4.5:1 on white and 300 clears it on navy —
         // the two pairings the interface actually uses.
@@ -64,6 +85,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['var(--font-jakarta)', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         xl: '0.875rem',

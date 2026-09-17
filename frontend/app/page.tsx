@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 import { readSession } from '@/lib/db/session';
 import { prisma } from '@/lib/db/client';
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import { LandingPage } from '@/components/LandingPage';
+
+// Typefaces used by the landing page design. Exposed as CSS variables so only the
+// landing page opts into them; the rest of the app keeps the system font stack.
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap' });
 
 /**
  * The application's front door.
@@ -34,5 +40,9 @@ export default async function HomePage() {
       })
     : null;
 
-  return <LandingPage signedIn={Boolean(citizen)} />;
+  return (
+    <div className={`${inter.variable} ${jakarta.variable}`}>
+      <LandingPage signedIn={Boolean(citizen)} />
+    </div>
+  );
 }
