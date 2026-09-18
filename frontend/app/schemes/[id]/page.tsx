@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useMemo, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/shell';
@@ -13,19 +13,45 @@ import {
   EmptyState,
   Icon,
   ProgressBar,
+  Skeleton,
   cx,
 } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { buildChecklist, evaluateScheme } from '@/lib/eligibility';
 import { getScheme, SECTOR_LABELS } from '@/lib/schemes';
+import type { Scheme } from '@/types';
 
 export default function SchemeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user, allPeople, documents, createApplication, applications } = useStore();
   const router = useRouter();
   const [personId, setPersonId] = useState(user.id);
+  const [scheme, setScheme] = useState<Scheme | undefined>(() => getScheme(id));
+  const [loading, setLoading] = useState<boolean>(!getScheme(id));
 
-  const scheme = getScheme(id);
+  useEffect(() => {
+    let mounted = true;
+    async function loadScheme() {
+      try {
+        const res = await fetch(`/api/schemes/${encodeURIComponent(id)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (mounted && json.data) {
+            setScheme(json.data);
+          }
+        }
+      } catch (err) {
+        console.warn(`[SchemeDetailPage] Failed to fetch scheme ${id} from API:`, err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    loadScheme();
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
+
   const person = allPeople.find((p) => p.id === personId) ?? user;
 
   const result = useMemo(() => (scheme ? evaluateScheme(person, scheme) : null), [person, scheme]);
@@ -33,6 +59,18 @@ export default function SchemeDetailPage({ params }: { params: Promise<{ id: str
     () => (scheme ? buildChecklist(person, scheme, documents) : []),
     [person, scheme, documents],
   );
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="mx-auto max-w-[900px] space-y-4">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-56 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!scheme || !result) {
     return (
@@ -78,12 +116,19 @@ export default function SchemeDetailPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="brand">{SECTOR_LABELS[scheme.sector]}</Badge>
+                <Badge tone="brand">{SECTOR_LABELS[scheme.sector] ?? scheme.sector}</Badge>
                 <Badge tone="neutral">{scheme.level === 'central' ? 'Central scheme' : 'State scheme'}</Badge>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live Govt Data
-                </span>
+                {scheme.sourceType === 'live_api' ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live Govt Data
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    Authoritative Catalogue
+                  </span>
+                )}
               </div>
               <h1 className="mt-2 text-2xl font-bold tracking-tight">{scheme.name}</h1>
               <div className="mt-1 flex flex-wrap items-center gap-3 text-sm muted">
@@ -141,7 +186,7 @@ export default function SchemeDetailPage({ params }: { params: Promise<{ id: str
 
           <p className="mb-5 rounded-xl bg-[var(--canvas)] px-4 py-3 text-sm leading-relaxed">{result.reason}</p>
 
-          {/* Rule-by-rule breakdown — this is what stops the engine feeling like a black box */}
+          {/* Rule-by-rule breakdown */}
           <ul className="space-y-2.5">
             {result.passed.map((r) => (
               <li key={r.label} className="flex items-start gap-3">

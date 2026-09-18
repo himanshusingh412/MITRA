@@ -337,3 +337,36 @@ export async function getLiveSchemes(): Promise<{
     sourceTypeCounts: { live_api: 0, authoritative_catalogue: 18, cached: 18 },
   };
 }
+
+/**
+ * Resolves a single scheme by ID or slug from PostgreSQL database, falling back to BASE_SCHEMES.
+ */
+export async function getLiveSchemeById(id: string): Promise<Scheme | undefined> {
+  const decodedId = decodeURIComponent(id);
+  try {
+    const row = await prisma.scheme.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { id: decodedId },
+          { id: { equals: id, mode: 'insensitive' } },
+          { id: { equals: decodedId, mode: 'insensitive' } },
+        ],
+      },
+    });
+
+    if (row) {
+      return toScheme(row);
+    }
+  } catch (err) {
+    console.warn(`[schemeSync] Could not read scheme ${id} from database, falling back to catalogue:`, err);
+  }
+
+  return BASE_SCHEMES.find(
+    (s) =>
+      s.id === id ||
+      s.id === decodedId ||
+      s.id.toLowerCase() === id.toLowerCase() ||
+      s.id.toLowerCase() === decodedId.toLowerCase()
+  );
+}
