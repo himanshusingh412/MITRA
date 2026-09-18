@@ -80,9 +80,19 @@ export default function SchemeDetailPage({ params }: { params: Promise<{ id: str
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone="brand">{SECTOR_LABELS[scheme.sector]}</Badge>
                 <Badge tone="neutral">{scheme.level === 'central' ? 'Central scheme' : 'State scheme'}</Badge>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Govt Data
+                </span>
               </div>
               <h1 className="mt-2 text-2xl font-bold tracking-tight">{scheme.name}</h1>
-              <p className="muted mt-1 text-sm">{scheme.ministry}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-sm muted">
+                <span>{scheme.ministry}</span>
+                {scheme.sourceName && <span>• Official Source: {scheme.sourceName}</span>}
+                {scheme.lastUpdated && (
+                  <span>• Last updated: {new Date(scheme.lastUpdated).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                )}
+              </div>
             </div>
           </div>
 

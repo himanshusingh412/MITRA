@@ -5,6 +5,8 @@ import type {
   LifeEvent,
   Notification,
   Occupation,
+  Scheme,
+  SchemeSector,
   StoredDocument,
 } from '@/types';
 
@@ -156,3 +158,62 @@ export function toNotification(row: NotificationRow): Notification {
     href: row.href ?? undefined,
   };
 }
+
+export type SchemeRow = {
+  id: string;
+  name: string;
+  shortName: string;
+  ministry: string;
+  sector: string;
+  level: string;
+  state?: string | null;
+  tagline: string;
+  summary: string;
+  benefitHeadline: string;
+  benefitDetail: string;
+  rules: unknown;
+  documents: unknown;
+  applyMode: string[];
+  processingDays: number;
+  officialUrl: string;
+  sourceUrl?: string | null;
+  sourceName?: string | null;
+  sourceType?: string | null;
+  relatedLifeEvents: string[];
+  icon: string;
+  accent: string;
+  isActive?: boolean;
+  lastUpdated?: Date;
+  fetchedAt?: Date;
+};
+
+export function toScheme(row: SchemeRow): Scheme {
+  return {
+    id: row.id,
+    name: row.name,
+    shortName: row.shortName,
+    ministry: row.ministry,
+    sector: row.sector as SchemeSector,
+    level: row.level as 'central' | 'state',
+    state: row.state ?? undefined,
+    tagline: row.tagline,
+    summary: row.summary,
+    benefitHeadline: row.benefitHeadline,
+    benefitDetail: row.benefitDetail,
+    rules: (Array.isArray(row.rules) ? row.rules : []) as Scheme['rules'],
+    documents: (Array.isArray(row.documents) ? row.documents : []) as Scheme['documents'],
+    applyMode: row.applyMode ?? [],
+    processingDays: row.processingDays ?? 30,
+    officialUrl: row.officialUrl,
+    sourceUrl: row.sourceUrl ?? undefined,
+    sourceName: row.sourceName ?? undefined,
+    sourceType: (row.sourceType || 'authoritative_catalogue') as Scheme['sourceType'],
+    lastUpdated: row.lastUpdated ? row.lastUpdated.toISOString() : undefined,
+    fetchedAt: row.fetchedAt ? row.fetchedAt.toISOString() : undefined,
+    isActive: row.isActive ?? true,
+    relatedLifeEvents: (row.relatedLifeEvents ?? []) as Scheme['relatedLifeEvents'],
+    icon: row.icon ?? 'Landmark',
+    accent: (row.accent ?? 'blue') as Scheme['accent'],
+  };
+}
+

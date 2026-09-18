@@ -125,15 +125,17 @@ const LEVEL_WEIGHT: Record<EligibilityResult['level'], number> = {
  */
 export function recommendSchemes(
   profile: CitizenProfile,
-  opts: { limit?: number; includeIneligible?: boolean; sector?: string } = {},
+  opts: { limit?: number; includeIneligible?: boolean; sector?: string; customSchemes?: Scheme[] } = {},
 ): Array<{ scheme: Scheme; result: EligibilityResult }> {
-  const { limit, includeIneligible = false, sector } = opts;
+  const { limit, includeIneligible = false, sector, customSchemes } = opts;
+  const list = customSchemes && customSchemes.length > 0 ? customSchemes : SCHEMES;
 
-  const rows = SCHEMES.filter((s) => (sector ? s.sector === sector : true))
+  const rows = list
+    .filter((s) => (sector ? s.sector === sector : true))
     .map((scheme) => ({ scheme, result: evaluateScheme(profile, scheme) }))
     .filter((row) => (includeIneligible ? true : row.result.level !== 'not-eligible'))
     .map((row) => {
-      const lifeEventBoost = row.scheme.relatedLifeEvents.some((e) => profile.lifeEvents.includes(e))
+      const lifeEventBoost = (row.scheme.relatedLifeEvents || []).some((e) => profile.lifeEvents.includes(e))
         ? 200
         : 0;
       const alreadyHas = profile.existingBenefits.includes(row.scheme.id) ? -900 : 0;

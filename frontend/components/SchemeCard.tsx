@@ -66,11 +66,22 @@ export function SchemeRow({ scheme, result }: { scheme: Scheme; result: Eligibil
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-[15px] font-bold">{scheme.shortName}</h3>
           <EligibilityBadge level={result.level} />
+          {scheme.sourceName && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Govt Data
+            </span>
+          )}
         </div>
         <p className="muted mt-1 line-clamp-1 text-[13px]">{scheme.tagline}</p>
-        <p className="mt-1.5 text-sm font-semibold text-brand-600 dark:text-brand-300">
-          {scheme.benefitHeadline}
-        </p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm font-semibold text-brand-600 dark:text-brand-300">
+          <span>{scheme.benefitHeadline}</span>
+          {scheme.lastUpdated && (
+            <span className="muted text-xs font-normal">
+              Updated: {new Date(scheme.lastUpdated).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          )}
+        </div>
       </div>
 
       <Icon

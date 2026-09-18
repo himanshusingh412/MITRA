@@ -251,3 +251,43 @@ model Notification {
   @@index([citizenId, read])
   @@map("notifications")
 }
+
+// ─── Live Government Schemes Catalogue ────────────────────────────────────────
+
+model Scheme {
+  id                String   @id
+  name              String
+  shortName         String
+  ministry          String
+  sector            String
+  level             String   @default("central")
+  state             String?
+  tagline           String
+  summary           String   @db.Text
+  benefitHeadline   String
+  benefitDetail     String   @db.Text
+  rules             Json
+  documents         Json
+  applyMode         String[]
+  processingDays    Int      @default(30)
+  officialUrl       String
+  sourceUrl         String?
+  sourceName        String   @default("Government of India")
+  sourceType        String   @default("authoritative_catalogue")
+  relatedLifeEvents String[]
+  icon              String   @default("Landmark")
+  accent            String   @default("blue")
+  isActive          Boolean  @default(true)
+  lastUpdated       DateTime @default(now())
+  fetchedAt         DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([sector, isActive])
+  @@index([state])
+  @@index([ministry])
+  @@index([sourceName])
+  @@index([lastUpdated])
+  @@map("schemes")
+}
+

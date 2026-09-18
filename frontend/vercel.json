@@ -4,6 +4,13 @@
   "regions": ["bom1"],
   "functions": {
     "app/api/assistant/route.ts": { "maxDuration": 20 },
-    "app/api/bootstrap/route.ts": { "maxDuration": 30 }
-  }
+    "app/api/bootstrap/route.ts": { "maxDuration": 30 },
+    "app/api/cron/sync-schemes/route.ts": { "maxDuration": 30 }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/sync-schemes",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }

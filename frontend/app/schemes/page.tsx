@@ -1,14 +1,15 @@
 'use client';
 
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/shell';
 import { SchemeRow } from '@/components/SchemeCard';
 import { Badge, Card, EmptyState, Icon, PageHeader, Skeleton, Tabs } from '@/components/ui';
 import { useStore } from '@/lib/store';
 import { recommendSchemes } from '@/lib/eligibility';
-import { SECTOR_LABELS } from '@/lib/schemes';
+import { SCHEMES, SECTOR_LABELS } from '@/lib/schemes';
 import { ALL_PEOPLE } from '@/lib/demoData';
+import type { Scheme } from '@/types';
 
 function SchemesView() {
   const { user, allPeople, t } = useStore();
@@ -17,11 +18,37 @@ function SchemesView() {
   const [personId, setPersonId] = useState(user.id);
   const [query, setQuery] = useState('');
   const [showIneligible, setShowIneligible] = useState(false);
+  const [liveSchemes, setLiveSchemes] = useState<Scheme[]>(SCHEMES);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [isLive, setIsLive] = useState<boolean>(false);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadLiveSchemes() {
+      try {
+        const res = await fetch('/api/schemes');
+        if (res.ok) {
+          const json = await res.json();
+          if (mounted && Array.isArray(json.data) && json.data.length > 0) {
+            setLiveSchemes(json.data);
+            setLastSyncedAt(json.meta?.lastSyncedAt ?? null);
+            setIsLive(Boolean(json.meta?.isLive));
+          }
+        }
+      } catch (err) {
+        console.warn('[SchemesView] Failed to fetch live schemes API, using local fallback catalogue:', err);
+      }
+    }
+    loadLiveSchemes();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const person = allPeople.find((p) => p.id === personId) ?? user;
 
   const rows = useMemo(() => {
-    const all = recommendSchemes(person, { includeIneligible: true });
+    const all = recommendSchemes(person, { includeIneligible: true, customSchemes: liveSchemes });
     return all
       .filter((r) => (sector === 'all' ? true : r.scheme.sector === sector))
       .filter((r) => (showIneligible ? true : r.result.level !== 'not-eligible'))
@@ -35,13 +62,13 @@ function SchemesView() {
           r.scheme.ministry.toLowerCase().includes(q)
         );
       });
-  }, [person, sector, query, showIneligible]);
+  }, [person, sector, query, showIneligible, liveSchemes]);
 
   const eligibleCount = rows.filter((r) => r.result.level === 'eligible').length;
   const verifyCount = rows.filter((r) => r.result.level === 'verify').length;
 
   const sectorTabs = useMemo(() => {
-    const all = recommendSchemes(person, { includeIneligible: true });
+    const all = recommendSchemes(person, { includeIneligible: true, customSchemes: liveSchemes });
     const counts = new Map<string, number>();
     for (const r of all) {
       if (r.result.level === 'not-eligible' && !showIneligible) continue;
@@ -53,12 +80,30 @@ function SchemesView() {
         .filter(([key]) => counts.has(key))
         .map(([key, label]) => ({ id: key, label, count: counts.get(key) })),
     ];
-  }, [person, showIneligible, t]);
+  }, [person, showIneligible, t, liveSchemes]);
 
   return (
     <AppShell>
       <div id="main" className="mx-auto max-w-[1180px]">
-        <PageHeader title={t('schemes.title')} subtitle={t('schemes.sub')} />
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+          <PageHeader title={t('schemes.title')} subtitle={t('schemes.sub')} />
+            {isLive ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Live Government Data Feed
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                Cached Authoritative Catalogue
+              </span>
+            )}
+            {lastSyncedAt && (
+              <span className="text-xs muted font-medium">
+                Last updated: {new Date(lastSyncedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </span>
+            )}
+        </div>
 
         {/* Smart eligibility filter — whose profile are we matching against */}
         <Card className="mb-5 p-4">

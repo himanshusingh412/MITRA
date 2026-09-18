@@ -109,6 +109,13 @@ export interface Scheme {
   applyMode: string[];
   processingDays: number;
   officialUrl: string;
+  state?: string;
+  sourceUrl?: string;
+  sourceName?: string;
+  sourceType?: 'live_api' | 'authoritative_catalogue';
+  lastUpdated?: string;
+  fetchedAt?: string;
+  isActive?: boolean;
   relatedLifeEvents: LifeEvent[];
   icon: string;
   accent: 'blue' | 'green' | 'amber' | 'violet' | 'rose' | 'teal';
